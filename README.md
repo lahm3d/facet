@@ -123,7 +123,7 @@ Open 'git bash' window from your Windows Start button and navigate to the folder
 
 Now download FACET code by typing:
 
-        git clone https://code.usgs.gov/lahmed/facet.git
+        git clone https://code.usgs.gov/water/facet.git
 
 **Step 3:** Configure the FACET Python environment.
 
