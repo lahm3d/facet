@@ -1,0 +1,49 @@
+[
+  {
+    "name": "FACET",
+    "organization": "U.S. Geological Survey",
+    "description": "Floodplain and Channel Evaluation Tool: FACET. A Python tool to map stream and floodplain geomorphic characteristics from digital elevation models",
+    "version": "0.1.0",
+    "status": "Production",
+
+    "permissions": {
+      "usageType": "openSource",
+      "licenses": [
+        {
+          "name": "Public Domain, CC0-1.0",
+          "URL": "https://code.usgs.gov/water/facet/blob/master/LICENSE.md"
+        }
+      ]
+    },
+
+    "homepageURL": "https://code.usgs.gov/water/facet",
+    "downloadURL": "https://code.usgs.gov/water/facet/-/archive/v0.1.0/facet-v0.1.0.zip", 
+    "disclaimerURL": "https://code.usgs.gov/water/facet/blob/master/DISCLAIMER.md",
+    "repositoryURL": "https://code.usgs.gov/water/facet.git",
+    "vcs": "git",
+
+    "laborHours": 2080,
+
+    "tags": [
+      "USGS",
+      "FACET",
+	  "Python",
+	  "R",
+	  "water"
+    ],
+
+    "languages": [
+      "R",
+      "Python"
+    ],
+
+    "contact": {
+      "name": "Kristina Hopkins",
+      "email": "khopkins@usgs.gov"
+    },
+
+    "date": {
+      "metadataLastUpdated": "2019-12-02"
+    }
+  }
+]
