@@ -447,7 +447,7 @@ DOI network users should update their DOI certificate following the instructions
 If the user receives an error during the post processing step double check that the file path to R, `r exe path`, is correct in the config file. To quickly find the correct file path open R or RStudio and run the function R.home().
 
 ## Reporting bugs
-Please consider reporting bugs and asking questions on the code.usgs.gov/FACET Issues page: [https://code.usgs.gov/issues](https://code.usgs.gov/issues). Users can also email questions to facet@usgs.gov.
+Please consider reporting bugs and asking questions on the code.usgs.gov/FACET Issues page: [https://code.usgs.gov/water/facet/issues](https://code.usgs.gov/water/facet/issues). Users can also email questions to facet@usgs.gov.
 
 ## Acknowledgements
 
