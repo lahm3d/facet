@@ -615,6 +615,7 @@ def watershed_polygonize(in_tif, out_shp, dst_crs, logger):
                 if properties[0]['raster_val'] >= 0:
                     # capture & exclude geometries that throw ValueError performing geometry union
                     try:
+                        geom = [g if g.is_valid else g.buffer(0.0) for g in geom]
                         test_unary = unary_union(geom)
                         # write the feature, computing the unary_union of the elements...
                         # ...in the group with the properties of the first element in the group
@@ -2267,7 +2268,7 @@ def chanmetrics_bankpts(
     xn_count = get_feature_count(str_xnsPath)
 
     # Striding:
-    arr_strides = np.linspace(0, xn_count, xn_count / 100)
+    arr_strides = np.linspace(0, xn_count, int(xn_count / 100))
     arr_strides = np.delete(arr_strides, 0)
 
     # Now loop over the linknos to get access grid by window:
