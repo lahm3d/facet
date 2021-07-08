@@ -2268,7 +2268,7 @@ def chanmetrics_bankpts(
     xn_count = get_feature_count(str_xnsPath)
 
     # Striding:
-    arr_strides = np.linspace(0, xn_count, xn_count / 100)
+    arr_strides = np.linspace(0, xn_count, int(xn_count / 100))
     arr_strides = np.delete(arr_strides, 0)
 
     # Now loop over the linknos to get access grid by window:
