@@ -25,7 +25,7 @@ import sys
 
 import pandas as pd
 
-import config
+from setup import config
 import funcs
 from post_processing import post_process
 
