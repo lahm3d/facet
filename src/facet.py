@@ -109,7 +109,6 @@ if __name__ == '__main__':
         # FACET post-processing QAQC
         post_process_dir = huc_dir / 'post_processing'
 
-
         # ========== FACET Pre-processing Steps ========== #
         # raw dem file path
         str_dem = huc_dir / f'{HUCID}_dem.tif'
@@ -142,7 +141,7 @@ if __name__ == '__main__':
             str_dem_path_proj = str_dem_proj
 
         # Clip NHD plus HR streams by HUC:
-        funcs.clip_features_using_grid(
+        funcs.clip_nhdhr_using_grid(
             PARAMS['streams prj'], str_nhdhr_huc10, str_dem_path_proj,
             PARAMS['crs'], logger, huc10_mask_proj)
 
