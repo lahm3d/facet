@@ -1,3 +1,56 @@
+"""
+Created:            6/7/2019
+License:            Creative Commons Attribution 4.0 International (CC BY 4.0)
+                    http://creativecommons.org/licenses/by/4.0/
+Python version:     Tested on Python 3.7x (x64)
+
+
+PURPOSE
+------------------------------------------------------------------------------
+[Floodplain and Channel Evaluation Toolkit]
+
+FACET is a standalone Python tool that uses open source modules to map the
+floodplain extent and compute stream channel and floodplain geomorphic metrics
+such as channel width, streambank height, active floodplain width,
+and stream slope from DEMs.
+
+NOTES
+------------------------------------------------------------------------------
+"""
+from math import atan, ceil, isinf, sqrt
+from pathlib import Path
+from time import strftime
+from timeit import default_timer as timer
+import logging
+import os
+import shutil
+import subprocess
+import sys
+
+import numpy as np
+from scipy import signal
+from scipy.ndimage import label
+import scipy.ndimage as sc
+import fiona
+import geopandas as gpd
+from geopandas.tools import sjoin
+import pandas as pd
+import rasterio
+import rasterio.features
+from rasterio import merge, mask
+from rasterio.features import shapes
+from rasterio.warp import calculate_default_transform, reproject, Resampling, transform
+from shapely.geometry import shape, mapping, LineString, Point, Polygon
+from shapely.ops import unary_union
+import whitebox
+
+np.seterr(over="raise")
+
+# import whitebox
+WBT = whitebox.WhiteboxTools()
+WBT.verbose = False
+
+
 def breach_dem(str_dem_path, breach_output, logger):
     # breach dem
     st = timer()
@@ -229,7 +282,7 @@ def pre_breach_DEM_conditioning(
 # ===============================================================================
 #  Create weight file for TauDEM D8 FAC
 # ===============================================================================
-def create_wg_from_streamlines(str_streamlines_path, str_dem_path, str_danglepts_path):
+def create_weight_grid_from_streamlines(str_streamlines_path, str_dem_path, str_danglepts_path):
     print("Creating weight grid from streamlines:")
 
     lst_coords = []
@@ -355,7 +408,7 @@ def preprocess_dem(
         """
 
         if run_wg:
-            create_wg_from_streamlines(
+            create_weight_grid_from_streamlines(
                 str_streamlines_path, str_dem_path, str_danglepts_path
             )
 
@@ -428,3 +481,256 @@ def preprocess_dem(
         raise
 
     return
+
+
+# ===================================================================================
+#  Build the Xns for all reaches and write to shapefile
+# ===================================================================================
+def write_xns_shp(
+    df_coords, streamlines_crs, str_xns_path, bool_isvalley, p_xngap, logger
+):
+    """
+    Builds Xns from x-y pairs representing shapely interpolations along a reach
+    Input: a list of tuples (row, col, linkno) for a reach
+
+    Output: list of tuples of lists describing the Xn's along a reach (row, col)
+    """
+    j = 0
+
+    # slopeCutoffVertical = 20 # just a threshold determining when to call a Xn vertical
+    # the final output, a list of tuples of XY coordinate pairs for all Xn's for this reach
+    XnCntr = 0
+    lst_xnrowcols = []
+    gp_coords = df_coords.groupby("linkno")
+
+    # Create the Xn shapefile for writing:
+    test_schema = {
+        "geometry": "LineString",
+        "properties": {"linkno": "int", "strmord": "int"},
+    }
+
+    logger.info("Building and Writing Cross Section File:")
+    with fiona.open(
+        str(str_xns_path),
+        "w",
+        driver="ESRI Shapefile",
+        crs=streamlines_crs,
+        schema=test_schema,
+    ) as chan_xns:
+        for i_linkno, df_linkno in gp_coords:
+            i_linkno = int(i_linkno)
+            i_order = int(df_linkno.order.iloc[0])
+            j += 1
+
+            # NOTE: Define Xn length (p_xnlength) and other parameters relative to stream order
+            # Settings for stream channel cross-sections:
+            p_xnlength, p_fitlength = get_xn_length_by_order(i_order, bool_isvalley)
+
+            reach_len = len(df_linkno["x"])
+
+            if reach_len <= p_xngap:
+                #                logger.info('Less than!')
+                continue  # skip it for now
+
+            # Loop along the reach at the specified intervals:(Xn loop)
+            for i in range(p_xngap, reach_len - p_xngap, p_xngap):
+
+                lstThisSegmentRows = []
+                lstThisSegmentCols = []
+
+                # if i + paramFitLength > reach_len
+                if p_fitlength > i or i + p_fitlength >= reach_len:
+                    fitLength = p_xngap
+                else:
+                    fitLength = p_fitlength
+
+                lstThisSegmentRows.append(df_linkno["y"].iloc[i + fitLength])
+                lstThisSegmentRows.append(df_linkno["y"].iloc[i - fitLength])
+                lstThisSegmentCols.append(df_linkno["x"].iloc[i + fitLength])
+                lstThisSegmentCols.append(df_linkno["x"].iloc[i - fitLength])
+
+                midPtRow = df_linkno["y"].iloc[i]
+                midPtCol = df_linkno["x"].iloc[i]
+
+                # Send it the endpts of what you to draw a perpendicular line to:
+                lst_xy = build_xns(
+                    lstThisSegmentRows,
+                    lstThisSegmentCols,
+                    midPtCol,
+                    midPtRow,
+                    p_xnlength,
+                )  # returns a list of two endpoints
+
+                XnCntr = XnCntr + 1
+
+                # the shapefile geometry use (lon,lat) Requires a list of x-y tuples
+                line = {"type": "LineString", "coordinates": lst_xy}
+                prop = {"linkno": i_linkno, "strmord": i_order}
+                chan_xns.write({"geometry": line, "properties": prop})
+
+    return lst_xnrowcols
+
+
+# ===================================================================================
+#  Build Xn's based on vector features
+# ===================================================================================
+def get_stream_coords_from_features(
+    str_streams_filepath, cell_size, str_reachid, str_orderid, logger
+):
+
+    lst_df_final = []
+
+    p_interp_spacing = int(
+        cell_size
+    )  # 3 # larger numbers would simulate a more smoothed reach
+    j = 0  # prog bar
+
+    # Open the streamlines shapefile:
+    with fiona.open(str(str_streams_filepath), "r") as streamlines:
+
+        # Get the crs:
+        streamlines_crs = streamlines.crs
+        # str_proj4 = crs.to_string(streamlines.crs)
+
+        tot = len(streamlines)
+        for line in streamlines:
+            j += 1
+            line_shply = LineString(line["geometry"]["coordinates"])
+
+            length = line_shply.length  # units depend on crs
+
+            if length > 9:  # Skip small ones. NOTE: This value is dependent on CRS!!
+
+                i_linkno = line["properties"][str_reachid]
+                i_order = line["properties"][str_orderid]
+
+                # Smoothing reaches via Shapely:
+                if i_order <= 3:
+                    line_shply = line_shply.simplify(5.0, preserve_topology=False)
+                elif i_order == 4:
+                    line_shply = line_shply.simplify(10.0, preserve_topology=False)
+                elif i_order == 5:
+                    line_shply = line_shply.simplify(20.0, preserve_topology=False)
+                elif i_order >= 6:
+                    line_shply = line_shply.simplify(30.0, preserve_topology=False)
+
+                length = line_shply.length
+
+                # p_interp_spacing in projection units
+                int_pts = np.arange(0, length, p_interp_spacing)
+
+                lst_x = []
+                lst_y = []
+                lst_linkno = []
+                lst_order = []
+                for i in int_pts:
+                    i_pt = np.array(line_shply.interpolate(i))
+                    lst_x.append(i_pt[0])
+                    lst_y.append(i_pt[1])
+                    lst_linkno.append(i_linkno)
+                    lst_order.append(i_order)
+
+                df_coords = pd.DataFrame(
+                    {"x": lst_x, "y": lst_y, "linkno": lst_linkno, "order": lst_order}
+                )
+                # potential duplicates due to interpolation
+                df_coords.drop_duplicates(subset=["x", "y"], inplace=True)
+                lst_df_final.append(df_coords)
+
+        df_final = pd.concat(lst_df_final)
+
+    return df_final, streamlines_crs  # A list of lists
+
+
+# ================================================================================
+#   For 2D cross sectional measurement
+# ================================================================================
+def build_xns(lstThisSegmentRows, lstThisSegmentCols, midPtCol, midPtRow, p_xnlength):
+    slopeCutoffVertical = 20  # another check
+
+    # Find initial slope:
+    if abs(lstThisSegmentCols[0] - lstThisSegmentCols[-1]) < 3:
+        m_init = 9999.0
+    elif abs(lstThisSegmentRows[0] - lstThisSegmentRows[-1]) < 3:
+        m_init = 0.0001
+    else:
+        m_init = (lstThisSegmentRows[0] - lstThisSegmentRows[-1]) / (
+            lstThisSegmentCols[0] - lstThisSegmentCols[-1]
+        )
+
+    # Check for zero or infinite slope:
+    if m_init == 0:
+        m_init = 0.0001
+    elif isinf(m_init):
+        m_init = 9999.0
+
+    # Find the orthogonal slope:
+    m_ortho = -1 / m_init
+
+    xn_steps = [-float(p_xnlength), float(p_xnlength)]  # just the end points
+
+    lst_xy = []
+    for r in xn_steps:
+
+        # Make sure it's not too close to vertical:
+        # NOTE X-Y vs. Row-Col here:
+        if abs(m_ortho) > slopeCutoffVertical:
+            tpl_xy = (midPtCol, midPtRow + r)
+
+        else:
+            fit_col_ortho = midPtCol + (float(r) / (sqrt(1 + m_ortho**2)))
+            tpl_xy = float(((midPtCol + (float(r) / (sqrt(1 + m_ortho**2)))))), float(
+                ((m_ortho) * (fit_col_ortho - midPtCol) + midPtRow)
+            )
+
+        lst_xy.append(tpl_xy)  # A list of two tuple endpts
+
+    return lst_xy
+
+
+def get_xn_length_by_order(i_order, bool_isvalley):
+
+    # Settings for channel cross-sections:
+    if not bool_isvalley:
+        if i_order == 1:
+            p_xnlength = 20
+            p_fitlength = 3
+        elif i_order == 2:
+            p_xnlength = 23
+            p_fitlength = 6
+        elif i_order == 3:
+            p_xnlength = 40
+            p_fitlength = 9
+        elif i_order == 4:
+            p_xnlength = 60
+            p_fitlength = 12
+        elif i_order == 5:
+            p_xnlength = 80
+            p_fitlength = 15
+        elif i_order >= 6:
+            p_xnlength = 150
+            p_fitlength = 20
+
+            # Settings for floodplain cross-sections:
+    elif bool_isvalley:
+
+        if i_order == 1:
+            p_xnlength = 50
+            p_fitlength = 5
+        elif i_order == 2:
+            p_xnlength = 75
+            p_fitlength = 8
+        elif i_order == 3:
+            p_xnlength = 100
+            p_fitlength = 12
+        elif i_order == 4:
+            p_xnlength = 150
+            p_fitlength = 20
+        elif i_order == 5:
+            p_xnlength = 200
+            p_fitlength = 30
+        elif i_order >= 6:
+            p_xnlength = 500
+            p_fitlength = 40
+
+    return p_xnlength, p_fitlength
