@@ -1,9 +1,30 @@
-# ===============================================================================
-#  Calculate angle from vertical of left and right banks
-# ===============================================================================
+from math import ceil, atan
+
+import numpy as np
+import rasterio
+import fiona
+import pandas as pd
+
+from src import utils
+
+
 def find_bank_angles(
     tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert, xn_ptdistance, logger
 ):
+    """
+    Calculate angle from vertical of left and right banks
+
+    Args:
+        tpl_bfpts:
+        lst_total_slices:
+        xn_len:
+        xn_elev_n:
+        parm_ivert:
+        xn_ptdistance:
+        logger:
+
+    Returns:
+    """
     try:
         total_slices = len(lst_total_slices)
 
@@ -107,10 +128,16 @@ def find_bank_angles(
     return tpl_angles
 
 
-# ===============================================================================
-# Search Xn outward to the right to find the first point greater than the left bank
-# ===============================================================================
 def search_right_gt(xnelev, prev_ind, lf_bf):
+    """
+    Search Xn outward to the right to find the first point greater than the left bank
+    Args:
+        xnelev:
+        prev_ind:
+        lf_bf:
+
+    Returns:
+    """
     # Search outward from end of previous slice:
     for i in range(prev_ind + 1, len(xnelev), 1):
 
@@ -123,10 +150,17 @@ def search_right_gt(xnelev, prev_ind, lf_bf):
     return bank_ind
 
 
-# ===============================================================================
-# Search Xn outward to the left to find the first point greater than the right bank
-# ===============================================================================
 def search_left_gt(xnelev, prev_ind, rt_bf):
+    """
+    Search Xn outward to the left to find the first point greater than the right bank
+
+    Args:
+        xnelev:
+        prev_ind:
+        rt_bf:
+
+    Returns:
+    """
     # Search outward from end of previous slice:
     for i in range(prev_ind, 0, -1):
 
@@ -139,25 +173,37 @@ def search_left_gt(xnelev, prev_ind, rt_bf):
     return bank_ind
 
 
-# ===============================================================================
-# Interpolate to find positions of right/left bank
-# ===============================================================================
 def interp_bank(x1, x2, y1, y2, y_uk):
-    x_uk = (((x2 - x1) * (y_uk - y1)) / (y2 - y1)) + x1
+    """
+    Interpolate to find positions of right/left bank
 
+    Args:
+        x1:
+        x2:
+        y1:
+        y2:
+        y_uk:
+
+    Returns:
+    """
+    x_uk = (((x2 - x1) * (y_uk - y1)) / (y2 - y1)) + x1
     return x_uk
 
 
-# ===============================================================================
-# Search for banks via slope break and vertical slices
-# ===============================================================================
 def find_bank_ratio_method(lst_total, ratio_threshold, xnelev_zero, slp_thresh, logger):
     """
-    Compares the length of the last gtzero slice (num of indices) vs. the previous slice
-    Inputs:     lst_total   - a list of 1D array slice index values
-                ratio_threshold
-                xnelev_zero - the Xn elevation profile normalized to zero
-    Output:     tpl_bfpts   - a tuple of bankfull points (left_index, right_index, height)
+    Search for banks via a slope threshold and vertical slices. Compares the length of the last gtzero slice
+     (num of indices) vs. the previous slice
+
+    Args:
+        lst_total: a list of 1D array slice index values
+        ratio_threshold:
+        xnelev_zero: the Xn elevation profile normalized to zero
+        slp_thresh:
+        logger:
+
+    Returns: a tuple of bankfull points (left_index, right_index, height)
+
     """
     tpl_bfpts = ()  # output tuple
     num_slices = (
@@ -214,7 +260,7 @@ def find_bank_ratio_method(lst_total, ratio_threshold, xnelev_zero, slp_thresh, 
 
                     # Find the smallest height of the two:
                     if (
-                        rt_bank_ind > 0 and lf_bank_ind < 0
+                            rt_bank_ind > 0 > lf_bank_ind
                     ):  # only the right index exists
 
                         # Interpolate to find left bankfull:
@@ -237,7 +283,7 @@ def find_bank_ratio_method(lst_total, ratio_threshold, xnelev_zero, slp_thresh, 
                             tpl_bfpts = (lfbf_ind, rt_bank_ind, bf_height)
 
                     elif (
-                        lf_bank_ind > 0 and rt_bank_ind < 0
+                            lf_bank_ind > 0 > rt_bank_ind
                     ):  # only the left index exists
 
                         # Interpolate to find right bank index:
@@ -330,12 +376,14 @@ def find_bank_ratio_method(lst_total, ratio_threshold, xnelev_zero, slp_thresh, 
     return tpl_bfpts
 
 
-# ===============================================================================
-# Check for continuity in vertical cross section slices
-# ===============================================================================
 def is_contiguous(gtzero_inds):
     """
-    Used by analyze_elev function
+    Check for continuity in vertical cross-section slices. Used by analyze_elev function
+
+    Args:
+        gtzero_inds:
+
+    Returns:
     """
     if (np.max(gtzero_inds) - np.min(gtzero_inds)) == np.count_nonzero(gtzero_inds) - 1:
         # Contiguous, continue
@@ -348,9 +396,6 @@ def is_contiguous(gtzero_inds):
     return bool_cont
 
 
-# ===============================================================================
-#    Analyze the elevation profile of each Xn and determine metrics
-# ===============================================================================
 def analyze_xnelev(
     df_xn_elev,
     param_ivert,
@@ -361,21 +406,36 @@ def analyze_xnelev(
     logger,
 ):
     """
-    Input:  List of elevation values at points along all Xn's.  Each input list entry
-            is a tuple of all elevation values along that Xn.
-            param_ratiothreshold = 1.5
-            param_slpthreshold = 0.03
-    Output: Metrics - Xn number, bank locations (indices), bank height, etc: channel width, for each Xn
-            Tuple: (Xn num, lf_i, rt_i, bf_height)
-    Procedure:
-        1. Loop over Xn list
-        2. Normalize Xn to zero
-        3. Loop over vertical slices using a step set by param_ivert
-        4. Find contiguous sets of indices for each slice
-        5. Search for slope break
-        6. If slope break exists, determine "bankfull" locations along Xn
-    """
+    Analyze the elevation profile of each Xn and determine metrics.
+         1. Loop over Xn list
+         2. Normalize Xn to zero
+         3. Loop over vertical slices using a step set by param_ivert
+         4. Find contiguous sets of indices for each slice
+         5. Search for slope break
+         6. If slope break exists, determine "bankfull" locations along Xn
 
+    Args:
+        df_xn_elev:
+        param_ivert:
+        xn_ptdist:
+        param_ratiothreshold:
+        param_slpthreshold:
+        nodata_val:
+        logger:
+
+    Returns: List of tuples containing metrics at each cross-section
+
+    tpl_bankfullpts
+    lst_total_cnt
+    this_linkno
+    tpl_bankfullpts[3] + np.min(tpl_row.elev)
+    tpl_bankangles
+    bf_area
+    ch_width
+    overbank_ratio
+    total_arearatio
+
+    """
     lst_bfmetrics = []  # list of tuples to contain output
 
     try:
@@ -391,7 +451,6 @@ def analyze_xnelev(
             arr_elev = arr_elev[arr_elev != np.float32(nodata_val)]
 
             # Normalize elevation to zero:
-            thisxn_norm = arr_elev - np.min(arr_elev)
             thisxn_norm = tpl_row.elev - np.min(tpl_row.elev)
             # Below is if you're using the breached DEM:
             # if this_order < 5:
@@ -533,6 +592,14 @@ def analyze_xnelev(
 
 
 def interpolate(arr_in, ind_val):
+    """
+
+    Args:
+        arr_in:
+        ind_val:
+
+    Returns:
+    """
     if ind_val == np.ceil(ind_val):
         out_val = arr_in[int(np.ceil(ind_val))]
     else:
@@ -544,10 +611,6 @@ def interpolate(arr_in, ind_val):
     return out_val
 
 
-# ====================================================================================
-#  Calculate channel metrics based on the bankpoint slope-threshold method at each Xn,
-#   writing the bank points to a shapefile
-# ====================================================================================
 def chanmetrics_bankpts(
     df_xn_elev,
     str_xnsPath,
@@ -560,13 +623,31 @@ def chanmetrics_bankpts(
     logger,
     spatial_ref,
 ):
+    """
+    Calculate channel metrics based on the bankpoint slope-threshold method at each Xn,
+     writing the bank points to a shapefile
+
+    Args:
+        df_xn_elev:
+        str_xnsPath:
+        str_demPath:
+        str_bankptsPath:
+        parm_ivert:
+        XnPtDist:
+        parm_ratiothresh:
+        parm_slpthresh:
+        logger:
+        spatial_ref:
+
+    Returns:
+    """
 
     logger.info("Channel metrics from bank points:")
 
     # << BEGIN LOOP >>
     # Do the rest by looping in strides, rather than all at once, to conserve memory:
     # (possibly using multiprocessing)
-    xn_count = get_feature_count(str_xnsPath)
+    xn_count = utils.get_feature_count(str_xnsPath)
 
     # Striding:
     arr_strides = np.linspace(0, xn_count, int(xn_count / 100))
@@ -711,11 +792,18 @@ def chanmetrics_bankpts(
                     bankpts.write({"geometry": rt_pt, "properties": prop_rt})
 
 
-# ===================================================================================
-#  Read an existing Xn file, calculate xy bounds for each linkno and read the DEM
-#  according to that window
-# ===================================================================================
 def read_xns_shp_and_get_dem_window(str_xns_path, str_dem_path, logger):
+    """
+    Read an existing Xn file, calculate xy bounds for each linkno and read the DEM
+     according to that window
+
+    Args:
+        str_xns_path:
+        str_dem_path:
+        logger:
+
+    Returns:
+    """
     min_nodata_thresh = -99999.0
     max_nodata_thresh = 99999.0
 

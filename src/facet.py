@@ -15,21 +15,22 @@ floodplain extent and compute stream channel and floodplain geomorphic metrics
 such as channel width, streambank height, active floodplain width,
 and stream slope from DEMs.
 
-NOTES
 ------------------------------------------------------------------------------
 """
-
-from pathlib import Path
 from timeit import default_timer as timer
-import sys
 
 import pandas as pd
 from setup import config
-import funcs
 from post_processing import post_process
+import preprocessing
+import utils
+from metrics import (
+    channel_cross_section_metrics,
+    floodplain_metrics,
+    channel_curvature_metrics,
+)
 
 if __name__ == "__main__":
-    print("\n<<< Start >>>\r\n")
 
     # read in config file & generate PARAMS dict
     CONFIG_FILE = config.get_config_path()
@@ -48,29 +49,25 @@ if __name__ == "__main__":
         # start HUC processing time
         start_time_i = timer()
 
-        # ========== Initialize Logging ========== #
         # set-up logging
-        log_file, time_stamp = funcs.setup_logging(HUCID, huc_dir)
-
-        # initialize logging
-        logger = funcs.initialize_logger(log_file)
-
-        # first log entry
+        log_file, time_stamp = utils.setup_logging(HUCID, huc_dir)
+        logger = utils.initialize_logger(log_file)
         logger.info(f"Running {HUCID}. Start time stamp: {time_stamp}")
 
-        # ========== Set-up Ancillary Datasets ========== #
+        # Set-up Ancillary Datasets
         HUC04 = HUCID[0:4]  # HUC 04 ID
 
         # Reproject Ancillary Data
-        funcs.reproject_ancillary_data(HUC04, PARAMS, logger)
+        utils.reproject_ancillary_data(HUC04, PARAMS, logger)
 
         # skip HUC if in skip list
         if HUCID in PARAMS["skip_list"]:
             logger.warning(f"{HUCID} was excluded based on the skip list")
             continue
 
-        # ========== Start Processing HUC ========== #
         """
+        Start Processing HUC
+        
         1. Construct file paths and folders each HUC
         2. Check *_DEM.tif and *_mask.shp in each HUC and reproject
         3. Pre-processing steps
@@ -104,7 +101,7 @@ if __name__ == "__main__":
         # FACET post-processing QAQC
         post_process_dir = huc_dir / "post_processing"
 
-        # ========== FACET Pre-processing Steps ========== #
+        # FACET Pre-processing Steps
         # raw dem file path
         str_dem = huc_dir / f"{HUCID}_dem.tif"
 
@@ -119,7 +116,7 @@ if __name__ == "__main__":
         try:
             huc10_mask = list(huc_dir.rglob("*_mask.shp"))[0]  # raw HUC10_mask
             # reproject the mask
-            huc10_mask_proj = funcs.reproject_vector_layer(
+            huc10_mask_proj = utils.reproject_vector_layer(
                 huc10_mask, PARAMS["crs"], logger
             )
             logger.info(f"{HUCID}: Mask SHP exists.")
@@ -129,7 +126,7 @@ if __name__ == "__main__":
 
         # Project dem raster
         if not str_dem_proj.is_file():
-            str_dem_path_proj = funcs.reproject_grid_layer(
+            str_dem_path_proj = utils.reproject_grid_layer(
                 str_dem,
                 PARAMS["crs"],
                 str_dem_proj,
@@ -143,7 +140,7 @@ if __name__ == "__main__":
             str_dem_path_proj = str_dem_proj
 
         # Clip NHD plus HR streams by HUC:
-        funcs.clip_nhdhr_using_grid(
+        utils.clip_nhdhr_using_grid(
             PARAMS["streams prj"],
             str_nhdhr_huc10,
             str_dem_path_proj,
@@ -155,7 +152,7 @@ if __name__ == "__main__":
         # pre-breach conditioning + breaching
         if PARAMS["pre-condition dem & fast-breach"]:
             # default breach
-            dem_merge = funcs.pre_breach_DEM_conditioning(
+            dem_merge = preprocessing.pre_breach_DEM_conditioning(
                 huc_dir,
                 HUCID,
                 str_dem_proj,
@@ -165,12 +162,12 @@ if __name__ == "__main__":
                 huc10_mask_proj,
                 logger,
             )
-            funcs.breach_dem(dem_merge, str_breached_dem_path, logger)
+            preprocessing.breach_dem(dem_merge, str_breached_dem_path, logger)
         elif PARAMS["fast-breach"]:
-            funcs.breach_dem(str_dem_proj, str_breached_dem_path, logger)
+            preprocessing.breach_dem(str_dem_proj, str_breached_dem_path, logger)
 
         # TauDEM preprocessing steps
-        funcs.preprocess_dem(
+        preprocessing.preprocess_dem(
             huc_dir,
             str_nhdhr_huc10,
             PARAMS["crs"],
@@ -183,18 +180,16 @@ if __name__ == "__main__":
             logger,
         )
 
-        # ========== Core FACET Algorithms ========== #
+        # Core FACET Algorithms
         st_core_facet_time = timer()
 
         # Convert vector streamlines to raster with pixel streamline values matching linkno:
-        funcs.rasterize_gdf(str_net_path, str_hand_path, str_raster_net_path)
+        utils.rasterize_gdf(str_net_path, str_hand_path, str_raster_net_path)
 
-        # << GET CELL SIZE >>
-        cell_size = int(funcs.get_cell_size(str_dem_proj))  # range functions need int?
+        cell_size = int(utils.get_cell_size(str_dem_proj))  # range functions need int?
 
-        # << BUILD STREAMLINES COORDINATES >>
         logger.info("Generating the stream network coordinates from the csv file...")
-        df_coords, streamlines_crs = funcs.get_stream_coords_from_features(
+        df_coords, streamlines_crs = preprocessing.get_stream_coords_from_features(
             str_net_path, cell_size, PARAMS["reach_id"], PARAMS["order_id"], logger
         )
         df_coords.to_csv(str_csv_path)
@@ -203,24 +198,22 @@ if __name__ == "__main__":
             str_csv_path,
         )
 
-        # ========== << CROSS SECTION ANALYSES >> ==========
-        # << CREATE Xn SHAPEFILES >>
-        # Channel:
-        funcs.write_xns_shp(
+        # Cross-section analysis
+        # Channel
+        preprocessing.write_xns_shp(
             df_coords, streamlines_crs, str_chxns_path, False, PARAMS["p_xngap"], logger
         )
-        # Floodplain:
-        funcs.write_xns_shp(
+        # Floodplain
+        preprocessing.write_xns_shp(
             df_coords, streamlines_crs, str_fpxns_path, True, int(30), logger
         )
 
-        # << INTERPOLATE ELEVATION ALONG Xns >>
-        df_xn_elev = funcs.read_xns_shp_and_get_dem_window(
+        df_xn_elev = channel_cross_section_metrics.read_xns_shp_and_get_dem_window(
             str_chxns_path, str_dem_proj, logger
         )
 
         # Calculate channel metrics and write bank point shapefile
-        funcs.chanmetrics_bankpts(
+        channel_cross_section_metrics.chanmetrics_bankpts(
             df_xn_elev,
             str_chxns_path,
             str_dem_proj,
@@ -233,8 +226,8 @@ if __name__ == "__main__":
             PARAMS["crs"],
         )
 
-        # ========== << BANK PIXELS AND WIDTH FROM CURVATURE >> ==========
-        funcs.bankpixels_from_curvature_window(
+        # Channel width from curvature
+        channel_curvature_metrics.bankpixels_from_curvature_window(
             df_coords,
             str_dem_proj,
             str_bankpixels_path,
@@ -243,7 +236,7 @@ if __name__ == "__main__":
             logger,
         )
 
-        funcs.channel_width_from_bank_pixels(
+        channel_curvature_metrics.channel_width_from_bank_pixels(
             df_coords,
             str_net_path,
             str_bankpixels_path,
@@ -254,8 +247,8 @@ if __name__ == "__main__":
             logger,
         )
 
-        # ========== << DELINEATE FIM >> ==========
-        funcs.fim_hand_poly(
+        # HAND-based floodplain delineation
+        floodplain_metrics.fim_hand_poly(
             str_hand_path,
             str_sheds_path,
             PARAMS["reach_id"],
@@ -264,21 +257,19 @@ if __name__ == "__main__":
             logger,
         )
 
-        # ========== << FLOODPLAIN METRICS >> ==========
-        # 1D approach:
-        funcs.read_fp_xns_shp_and_get_1D_fp_metrics(
+        # Cross-section approach
+        floodplain_metrics.read_fp_xns_shp_and_get_1D_fp_metrics(
             str_fpxns_path, str_fim_path, str_dem_proj, logger
         )
 
-        # 2D approach:
-        funcs.fp_metrics_chsegs(str_fim_path, "ch_wid_tot", str_chanmet_segs, logger)
-
-        # ========== << HAND CHARACTERISTICS >> ==========
+        # Moving window approach
+        floodplain_metrics.fp_metrics_chsegs(
+            str_fim_path, "ch_wid_tot", str_chanmet_segs, logger
+        )
 
         # Calculate channel and FP metrics through analysis of the HAND grid, separating the
         # in-channel pixels from the FP pixels.
-
-        funcs.hand_analysis_chsegs(
+        floodplain_metrics.hand_analysis_chsegs(
             str_hand_path,
             str_chanmet_segs,
             str_raster_net_path,
@@ -293,8 +284,7 @@ if __name__ == "__main__":
             f"Core FACET algorithms completed. Time elapsed: {end_core_facet_time} mins"
         )
 
-        # ========== Post-Processing  ==========
-        # rename columns in shapefile
+        # Post-Processing
         post_process.rename_shp_fields(huc_dir, logger)
 
         if PARAMS["post process"]:
@@ -312,12 +302,12 @@ if __name__ == "__main__":
 
             post_process.qaqc_R_scripts(PARAMS["r exe path"], dbf_tuple, logger)
 
-        # ========== Clean-up ==========
+        # Clean-up
         if PARAMS["clean"]:
-            funcs.clean_tmp_files(huc_dir)
+            utils.clean_tmp_files(huc_dir)
 
         if PARAMS["archive"]:
-            funcs.archive_huc(huc_dir)
+            utils.archive_huc(huc_dir)
 
         end_time = round((timer() - start_time_i) / 60.0, 2)
         logger.info(f"\nAll steps complete for {HUCID}:  {end_time} mins\r\n")

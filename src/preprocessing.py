@@ -1,52 +1,28 @@
 """
-Created:            6/7/2019
-License:            Creative Commons Attribution 4.0 International (CC BY 4.0)
-                    http://creativecommons.org/licenses/by/4.0/
-Python version:     Tested on Python 3.7x (x64)
-
-
-PURPOSE
-------------------------------------------------------------------------------
-[Floodplain and Channel Evaluation Toolkit]
-
-FACET is a standalone Python tool that uses open source modules to map the
-floodplain extent and compute stream channel and floodplain geomorphic metrics
-such as channel width, streambank height, active floodplain width,
-and stream slope from DEMs.
-
-NOTES
-------------------------------------------------------------------------------
+Pre-processing the raw DEM (filling pits, breaching, hydrologic conditioning)
+ and mapping the stream network coordinates
 """
-from math import atan, ceil, isinf, sqrt
-from pathlib import Path
-from time import strftime
-from timeit import default_timer as timer
-import logging
-import os
-import shutil
-import subprocess
 import sys
+from math import isinf, sqrt
+from timeit import default_timer as timer
 
-import numpy as np
-from scipy import signal
-from scipy.ndimage import label
-import scipy.ndimage as sc
 import fiona
 import geopandas as gpd
-from geopandas.tools import sjoin
+import numpy as np
 import pandas as pd
 import rasterio
 import rasterio.features
-from rasterio import merge, mask
-from rasterio.features import shapes
-from rasterio.warp import calculate_default_transform, reproject, Resampling, transform
-from shapely.geometry import shape, mapping, LineString, Point, Polygon
-from shapely.ops import unary_union
+import scipy.ndimage as sc
 import whitebox
+from rasterio import merge
+from rasterio.warp import transform
+from shapely.geometry import mapping, LineString, Point
+
+import utils
 
 np.seterr(over="raise")
 
-# import whitebox
+# import whitebox tools
 WBT = whitebox.WhiteboxTools()
 WBT.verbose = False
 
@@ -61,35 +37,24 @@ def breach_dem(str_dem_path, breach_output, logger):
     )
 
 
-def run_tauDEM(cmd, logger):
-    """execute tauDEM commands"""
-
-    try:
-        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        output, err = p.communicate()
-
-        # Get some feedback from the process to print out:
-        if err is None:
-            text = output.decode()
-            print("\n", text, "\n")
-        else:
-            print(err)
-
-    except subprocess.CalledProcessError as e:
-        logger.critical(f"failed to return code: {e}")
-    except OSError as e:
-        logger.critical(f"failed to execute shell: {e}")
-    except IOError as e:
-        logger.critical(f"failed to read file(s): {e}")
-
-
-# ===============================================================================
-#  Hydrologically condition DEM to allow breaching road & stream x-cross sections
-# ===============================================================================
 def pre_breach_DEM_conditioning(
     huc_dir, hucID, str_dem_path, str_nhd_path, census_roads, census_rails, mask, logger
 ):
-    # pre-breach DEM conditioning
+    """
+    Hydrologically condition DEM to allow breaching road & stream x-cross sections
+
+    Args:
+        huc_dir:
+        hucID:
+        str_dem_path:
+        str_nhd_path:
+        census_roads:
+        census_rails:
+        mask:
+        logger:
+
+    Returns:
+    """
 
     st = timer()
     # construct paths for temp & final files
@@ -107,7 +72,7 @@ def pre_breach_DEM_conditioning(
     for shp in shps:
         # whitebox clip
         inSHP, outSHP = shp[0], shp[1]
-        WBT.clip(inSHP, mask, outSHP, callback=my_callback)
+        WBT.clip(inSHP, mask, outSHP, callback=utils.my_callback)
 
     # Read line layers:
     gdf_nhd = gpd.read_file(str(str_nhd_path))
@@ -115,8 +80,7 @@ def pre_breach_DEM_conditioning(
     if tmp_rails.is_file():
         gdf_rails = gpd.read_file(str(tmp_rails))
 
-        ###---If rail roads exist within the HUC---###
-
+        # If railroads exist within the HUC
         # find unary_unions as points for streams x roads and rails
         pts_0 = gdf_roads.unary_union.intersection(gdf_nhd.unary_union)
         pts_1 = gdf_rails.unary_union.intersection(gdf_nhd.unary_union)
@@ -180,8 +144,7 @@ def pre_breach_DEM_conditioning(
         gdf_x_sect_polys.crs = gdf_nhd.crs
 
     else:
-        ###---If no rail roads within the HUC---###
-
+        # If no railroads within the HUC
         # find unary_unions as points for streams x roads
         pts_0 = gdf_roads.unary_union.intersection(gdf_nhd.unary_union)
 
@@ -232,8 +195,6 @@ def pre_breach_DEM_conditioning(
         """ passing circular kernel as footprint arg slows down:
                 scipy.ndimge.minimum_filter(), so pass 150,150
                 square window dims"""
-        # Apply the filter:
-
         # Get the DEM:
         with rasterio.open(str(str_dem_path)) as ds_dem:
             profile = ds_dem.profile.copy()
@@ -261,8 +222,10 @@ def pre_breach_DEM_conditioning(
         )
 
         # Read DEMs
-        dem_min = open_memory_tif(rasterio.open(ds_min_clip, "r").read(1), profile)
-        base_dem = open_memory_tif(
+        dem_min = utils.open_memory_tif(
+            rasterio.open(ds_min_clip, "r").read(1), profile
+        )
+        base_dem = utils.open_memory_tif(
             rasterio.open(str(str_dem_path), "r").read(1), profile
         )
         with rasterio.open(dem_merge, "w", **profile) as dst:
@@ -270,7 +233,6 @@ def pre_breach_DEM_conditioning(
             arr_merge, arr_trans = merge.merge([dem_min, base_dem])
             dst.write(arr_merge)
 
-        # logger
         end = round((timer() - st) / 60.0, 2)
         logger.info(
             f"Pre-breach DEM successfully conditioned. Time elapsed: {end} mins"
@@ -279,11 +241,19 @@ def pre_breach_DEM_conditioning(
         return dem_merge
 
 
-# ===============================================================================
-#  Create weight file for TauDEM D8 FAC
-# ===============================================================================
-def create_weight_grid_from_streamlines(str_streamlines_path, str_dem_path, str_danglepts_path):
-    print("Creating weight grid from streamlines:")
+def create_weight_grid_from_streamlines(
+    str_streamlines_path, str_dem_path, str_danglepts_path
+):
+    """
+    Create weight file for TauDEM D8 FAC
+
+    Args:
+        str_streamlines_path:
+        str_dem_path:
+        str_danglepts_path:
+
+    Returns:
+    """
 
     lst_coords = []
     lst_pts = []
@@ -339,11 +309,6 @@ def create_weight_grid_from_streamlines(str_streamlines_path, str_dem_path, str_
     return
 
 
-# ===============================================================================
-#  Mega-function for processing a raw DEM
-#   1. Breaching and filling
-#   2. TauDEM functions
-# ===============================================================================
 def preprocess_dem(
     root,
     str_streamlines_path,
@@ -356,9 +321,25 @@ def preprocess_dem(
     inputProc,
     logger,
 ):
+    """
+    Mega-function for pre-processing a raw DEM, first breaching and filling, then running TauDEM functions
+
+    Args:
+        root:
+        str_streamlines_path:
+        dst_crs:
+        run_wg:
+        run_taudem:
+        physio:
+        hucID:
+        breach_filepath:
+        inputProc:
+        logger:
+
+    Returns:
+    """
     try:
         st = timer()
-        # << Define all filenames here >>
         str_dem_path = str(root / f"{hucID}_dem_proj.tif")
         str_danglepts_path = str(root / f"{hucID}_wg.tif")
         p = str(root / f"{hucID}_breach_p.tif")
@@ -395,18 +376,6 @@ def preprocess_dem(
         # print ("22", ang)
         # print ("23", dd)
 
-        """
-        This tool is used to remove the sinks (i.e. topographic depressions and flat areas) from
-            digital elevation models (DEMs) using a highly efficient and flexible breaching,
-            or carving, method.
-        Arg Name: InputDEM, type: string, Description: The input DEM name with file extension
-        Arg Name: OutputFile, type: string, Description: The output filename with file extension
-        Arg Name: MaxDepth, type: float64, Description: The maximum breach channel depth (-1 to ignore)
-        Arg Name: MaxLength, type: int, Description: The maximum length of a breach channel (-1 to ignore)
-        Arg Name: ConstrainedBreaching, type: bool, Description: Use constrained breaching
-        Arg Name: SubsequentFilling, type: bool, Description: Perform post-breach filling
-        """
-
         if run_wg:
             create_weight_grid_from_streamlines(
                 str_streamlines_path, str_dem_path, str_danglepts_path
@@ -417,7 +386,7 @@ def preprocess_dem(
             d8_flow_dir = f'mpiexec -n {inputProc} d8flowdir -fel "{breach_filepath}" -p "{p}" -sd8 "{sd8}"'
             # Submit command to operating system
             logger.info("Running TauDEM D8 Flow Direction...")
-            run_tauDEM(d8_flow_dir, logger)
+            utils.run_command(d8_flow_dir, logger)
             logger.info("D8 Flow Direction successfully completed")
 
             # ============= << 3.a AD8 with weight grid >> ================        YES
@@ -425,7 +394,7 @@ def preprocess_dem(
             d8_flow_acc_w_grid = f'mpiexec -n {inputProc} AreaD8 -p "{p}" -ad8 "{ad8_wg}" -wg "{str_danglepts_path}" -nc'
             # Submit command to operating system
             logger.info("Running TauDEM D8 FAC (with weight grid)...")
-            run_tauDEM(d8_flow_acc_w_grid, logger)
+            utils.run_command(d8_flow_acc_w_grid, logger)
             logger.info("D8 FAC (with weight grid) successfully completed")
 
             # ============= << 3.b AD8 no weight grid >> ================
@@ -435,7 +404,7 @@ def preprocess_dem(
             )
             # Submit command to operating system
             logger.info("Running TauDEM D8 FAC (no weights)...")
-            run_tauDEM(d8_flow_acc_wo_grid, logger)
+            utils.run_command(d8_flow_acc_wo_grid, logger)
             logger.info("D8 FAC (no weights) successfully completed")
 
             # ============= << 4 StreamReachandWatershed with TauDEM >> ================
@@ -445,14 +414,14 @@ def preprocess_dem(
             )
             # Submit command to operating system
             logger.info("Running TauDEM Stream Reach and Watershed...")
-            run_tauDEM(reach_and_watershed, logger)
+            utils.run_command(reach_and_watershed, logger)
             logger.info("Stream Reach and Watershed successfully completed")
 
             # ============= << 5. Dinf with TauDEM >> =============        YES
             dInf_flow_dir = f'mpiexec -n {inputProc} DinfFlowDir -fel "{breach_filepath}" -ang "{ang}" -slp "{slp}"'
             # Submit command to operating system
             logger.info("Running TauDEM Dinfinity...")
-            run_tauDEM(dInf_flow_dir, logger)
+            utils.run_command(dInf_flow_dir, logger)
             logger.info("Dinfinity successfully completed")
 
             # ============= << 6. DinfDistanceDown (HAND) with TauDEM >> ============= YES
@@ -462,14 +431,14 @@ def preprocess_dem(
             dInf_dist_down = f'mpiexec -n {inputProc} DinfDistDown -fel "{str_dem_path}" -ang "{ang}" -src "{ad8_wg}" -dd "{dd}" -m {statmeth} {distmeth}'
             logger.info("Running TauDEM Dinf Distance Down...")
             # Submit command to operating system
-            run_tauDEM(dInf_dist_down, logger)
+            utils.run_command(dInf_dist_down, logger)
             logger.info("Dinf Distance Down successfully completed")
 
             # polygonize watersheds
-            watershed_polygonize(w, w_shp, dst_crs, logger)
+            utils.watershed_polygonize(w, w_shp, dst_crs, logger)
 
             # create watershed polys with physiographic attrs
-            join_watershed_attrs(w_shp, physio, net, wshed_physio, logger)
+            utils.join_watershed_attrs(w_shp, physio, net, wshed_physio, logger)
 
             end = round((timer() - st) / 60.0, 2)
             logger.info(
@@ -483,23 +452,27 @@ def preprocess_dem(
     return
 
 
-# ===================================================================================
-#  Build the Xns for all reaches and write to shapefile
-# ===================================================================================
 def write_xns_shp(
     df_coords, streamlines_crs, str_xns_path, bool_isvalley, p_xngap, logger
 ):
     """
     Builds Xns from x-y pairs representing shapely interpolations along a reach
-    Input: a list of tuples (row, col, linkno) for a reach
 
-    Output: list of tuples of lists describing the Xn's along a reach (row, col)
+    Args:
+        df_coords:
+        streamlines_crs:
+        str_xns_path:
+        bool_isvalley:
+        p_xngap:
+        logger:
+
+    Returns: list of tuples of lists describing the Xn's along a reach (row, col)
     """
     j = 0
 
     # slopeCutoffVertical = 20 # just a threshold determining when to call a Xn vertical
     # the final output, a list of tuples of XY coordinate pairs for all Xn's for this reach
-    XnCntr = 0
+    xn_cntr = 0
     lst_xnrowcols = []
     gp_coords = df_coords.groupby("linkno")
 
@@ -561,7 +534,7 @@ def write_xns_shp(
                     p_xnlength,
                 )  # returns a list of two endpoints
 
-                XnCntr = XnCntr + 1
+                xn_cntr = xn_cntr + 1
 
                 # the shapefile geometry use (lon,lat) Requires a list of x-y tuples
                 line = {"type": "LineString", "coordinates": lst_xy}
@@ -571,12 +544,21 @@ def write_xns_shp(
     return lst_xnrowcols
 
 
-# ===================================================================================
-#  Build Xn's based on vector features
-# ===================================================================================
 def get_stream_coords_from_features(
     str_streams_filepath, cell_size, str_reachid, str_orderid, logger
 ):
+    """
+
+
+    Args:
+        str_streams_filepath:
+        cell_size:
+        str_reachid:
+        str_orderid:
+        logger:
+
+    Returns:
+    """
 
     lst_df_final = []
 
@@ -642,10 +624,19 @@ def get_stream_coords_from_features(
     return df_final, streamlines_crs  # A list of lists
 
 
-# ================================================================================
-#   For 2D cross sectional measurement
-# ================================================================================
 def build_xns(lstThisSegmentRows, lstThisSegmentCols, midPtCol, midPtRow, p_xnlength):
+    """
+    Build cross-sections based on vector features
+
+    Args:
+        lstThisSegmentRows:
+        lstThisSegmentCols:
+        midPtCol:
+        midPtRow:
+        p_xnlength:
+
+    Returns:
+    """
     slopeCutoffVertical = 20  # another check
 
     # Find initial slope:
@@ -679,8 +670,8 @@ def build_xns(lstThisSegmentRows, lstThisSegmentCols, midPtCol, midPtRow, p_xnle
 
         else:
             fit_col_ortho = midPtCol + (float(r) / (sqrt(1 + m_ortho**2)))
-            tpl_xy = float(((midPtCol + (float(r) / (sqrt(1 + m_ortho**2)))))), float(
-                ((m_ortho) * (fit_col_ortho - midPtCol) + midPtRow)
+            tpl_xy = float((midPtCol + (float(r) / (sqrt(1 + m_ortho**2))))), float(
+                (m_ortho * (fit_col_ortho - midPtCol) + midPtRow)
             )
 
         lst_xy.append(tpl_xy)  # A list of two tuple endpts
@@ -689,6 +680,14 @@ def build_xns(lstThisSegmentRows, lstThisSegmentCols, midPtCol, midPtRow, p_xnle
 
 
 def get_xn_length_by_order(i_order, bool_isvalley):
+    """
+
+    Args:
+        i_order:
+        bool_isvalley:
+
+    Returns:
+    """
 
     # Settings for channel cross-sections:
     if not bool_isvalley:

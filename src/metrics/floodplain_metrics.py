@@ -1,18 +1,27 @@
 import rasterio
+import rasterio.mask
 import geopandas as gpd
+from shapely.geometry import mapping, LineString, Point
+import fiona
+import numpy as np
+import pandas as pd
+from scipy.ndimage import label
+
+from src import preprocessing
 
 
 def fp_metrics_chsegs(str_fim_path, str_chwid, str_chanmet_segs, logger):
     """
     Calculate floodplain metrics from 2D cross-sections
-    :param str_fim_path: path to the flood inundation raster
-    :param str_chwid: name of the field in the channel segment layer containing
-        pre-calculated channel width values
-    :param str_chanmet_segs: path to the segmented streamline layer containing
-        pre-calculated channel metrics (output form channel width from bank pixel method)
-    :param logger:
-    :return: Resaves the str_chanmet_segs file with additonal attributes
-    NOTE: stream order a required field in str_chanmet_segs ('order')
+
+    Args:
+        str_fim_path: path to the flood inundation raster
+        str_chwid: name of the field in the channel segment layer containing pre-calculated channel width values
+        str_chanmet_segs: path to the segmented streamline layer containing pre-calculated channel metrics
+         (output form channel width from bank pixel method)
+        logger: logger instance
+
+    Returns:
     """
     # Open the stream network segments layer with channel metrics:
     gdf_segs = gpd.read_file(str(str_chanmet_segs))
@@ -38,7 +47,7 @@ def fp_metrics_chsegs(str_fim_path, str_chwid, str_chanmet_segs, logger):
                 #      logger.info('pause')
 
                 # Get Xn length based on stream order:
-                p_xnlength, p_fitlength = get_xn_length_by_order(tpl.order, True)
+                p_xnlength, p_fitlength = preprocessing.get_xn_length_by_order(tpl.order, True)
 
                 x, y = zip(*mapping(tpl.geometry)["coordinates"])
 
@@ -47,7 +56,7 @@ def fp_metrics_chsegs(str_fim_path, str_chwid, str_chanmet_segs, logger):
                 midpt_y = y[int(len(y) / 2)]
 
                 # Build a 1D cross-section from the end points:
-                lst_xy = build_xns(y, x, midpt_x, midpt_y, p_xnlength)
+                lst_xy = preprocessing.build_xns(y, x, midpt_x, midpt_y, p_xnlength)
 
                 try:
                     # Turn the cross-section into a linestring:
@@ -56,7 +65,7 @@ def fp_metrics_chsegs(str_fim_path, str_chwid, str_chanmet_segs, logger):
                     logger.info("Error converting Xn endpts to LineString")
                     pass
 
-                # Buffer the cross section to form a 2D rectangle:
+                # Buffer the cross-section to form a 2D rectangle:
                 # about half of the line segment straight line distance
                 buff_len = tpl.dist_sl / 1.85
                 geom_fpls_buff = fp_ls.buffer(buff_len, cap_style=2)
@@ -142,17 +151,22 @@ def fp_metrics_chsegs(str_fim_path, str_chwid, str_chanmet_segs, logger):
     gdf_segs.to_file(str(str_chanmet_segs))  # [:-4]+'_TEST.shp')
 
 
-# ===============================================================================
-#  Delineate a FIM from the HAND grid using depth at each polygon (eg, catchment)
-#
-#    1. Read in catchment polygons
-#    2. Calculate a HAND height (h) for each polygon based on some attribute(s)
-#    3. Delineate FIM per catchment
-#
-# ===============================================================================
 def fim_hand_poly(
     str_hand_path, str_sheds_path, str_reachid, str_fim_path, str_fim_csv, logger
 ):
+    """
+    Delineate a FIM from the HAND grid using depth at each polygon (eg, catchment)
+
+    Args:
+        str_hand_path:
+        str_sheds_path:
+        str_reachid:
+        str_fim_path:
+        str_fim_csv:
+        logger:
+
+    Returns:
+    """
     # Open the HAND layer:
     with rasterio.open(str(str_hand_path)) as ds_hand:
 
@@ -238,29 +252,25 @@ def fim_hand_poly(
                     """
                     )
 
-    # Write out the final FIM grid:
-    #    print('Writing final FIM .tif file:')
-
+    # Write out the final FIM grid
     out_meta.update(compress="lzw")
     with rasterio.open(
         str_fim_path, "w", tiled=True, blockxsize=512, blockysize=512, **out_meta
     ) as dest:
         dest.write(arr_fim, indexes=1)
 
-    # Write HAND heights to csv:
+    # Write HAND heights to csv
     df_h = pd.DataFrame({str_reachid: lst_linkno, "prov": lst_prov, "h": lst_h})
     df_h.to_csv(str_fim_csv)
 
     return
 
-# ==================================================================================
-#  Floodplain Xn analysis
-# ==================================================================================
+
 def read_fp_xns_shp_and_get_1D_fp_metrics(
     str_xns_path, str_fp_path, str_dem_path, logger
 ):
     """
-    Get FP metrics from 1D cross section lines
+    Get FP metrics from 1D cross-section lines
 
     1. Read Xn file with geopandas, groupby linkno
     2. Linkno extent window like below using rasterio
@@ -268,6 +278,14 @@ def read_fp_xns_shp_and_get_1D_fp_metrics(
     4. Convert to array space
     5. Sample DEM and fp grids as numpy arrays
     6. Calculate metrics
+
+    Args:
+        str_xns_path:
+        str_fp_path:
+        str_dem_path:
+        logger:
+
+    Returns:
     """
     # Depth:
     lst_min_d = []
@@ -421,13 +439,17 @@ def hand_analysis_chsegs(
 ):
     """
     Calculation of floodplain metrics by analyzing HAND using 2D cross-sections and
-    differentiating between channel pixels and floodplain pixels.
-    :param str_hand_path: Path to the HAND grid .tif
-    :param str_chanmet_segs: Path to the output of the channel_width_from_bank_pixels() func
-    :param str_src_path: Path to the .tif file where stream reaches correspond to linkno values
-    :param str_fp_path: Path to the floodplain grid .tif
-    :param logger: Logger instance for messaging
-    :return: Writes out additional attributes to the file in str_chanmet_segs
+     discerning between channel pixels and floodplain pixels
+
+    Args:
+        str_hand_path: Path to the HAND grid .tif
+        str_chanmet_segs: Path to the output of the channel_width_from_bank_pixels() func
+        str_src_path: Path to the .tif file where stream reaches correspond to linkno values
+        str_fp_path: Path to the floodplain grid .tif
+        str_dem_path:
+        logger: Logger instance for messaging
+
+    Returns: Writes out additional attributes to the file in str_chanmet_segs
     """
     # Open the stream network segments layer with channel metrics:
     gdf_segs = gpd.read_file(str(str_chanmet_segs))
@@ -464,22 +486,17 @@ def hand_analysis_chsegs(
 
             res = ds_hand.res[0]
 
-            # Access the floodplain grid:
+            # Access the floodplain grid and dem
             with rasterio.open(str(str_fp_path)) as ds_fp:
-
                 with rasterio.open(str(str_dem_path)) as ds_dem:
 
                     # Loop over each segment:
                     for tpl in gdf_segs.itertuples():
-
                         try:
-                            # if tpl.linkno != 3343:
-                            #     continue
-
                             logger.info(f"\t{tpl.Index}")
 
                             # Get Xn length based on stream order:
-                            p_xnlength, p_fitlength = get_xn_length_by_order(
+                            p_xnlength, p_fitlength = preprocessing.get_xn_length_by_order(
                                 tpl.order, False
                             )
 
@@ -493,7 +510,7 @@ def hand_analysis_chsegs(
                             midpt_y = y[int(len(y) / 2)]
 
                             # Build a 1D cross-section from the end points:
-                            lst_xy = build_xns(y, x, midpt_x, midpt_y, p_xnlength)
+                            lst_xy = preprocessing.build_xns(y, x, midpt_x, midpt_y, p_xnlength)
 
                             try:
                                 # Turn the cross-section into a linestring:
@@ -504,7 +521,7 @@ def hand_analysis_chsegs(
                                 )
                                 pass
 
-                            # Buffer the cross section to form a 2D rectangle:
+                            # Buffer the cross-section to form a 2D rectangle:
                             # about half of the line segment...
                             # ...straight line distance --> AFFECTS LABELLED ARRAY!
                             buff_len = tpl.dist_sl / 2.5
@@ -525,7 +542,7 @@ def hand_analysis_chsegs(
                             arr_slices = np.linspace(w_min, w_max, 50)
 
                             # Also mask the src layer (1 time)...
-                            # ...to get the indices of the raster stream line:
+                            # ...to get the indices of the raster streamline:
                             w_src, trans_src = rasterio.mask.mask(
                                 ds_src, [xn_buff], crop=True
                             )
@@ -788,14 +805,19 @@ def hand_analysis_chsegs(
 
 def rugosity(arr, res, logger):
     """
-    Actual 3D area divided by 2D planar area gives a measure
-    of terrain complexity or roughness
+    Actual 3D area divided by 2D planar area gives a measure of terrain complexity or roughness
+    Args:
+        arr:
+        res:
+        logger:
+
+    Returns:
     """
     try:
         area3d = (
-                (res ** 2) * (1 + np.gradient(arr) ** 2) ** 0.5
+            (res**2) * (1 + np.gradient(arr) ** 2) ** 0.5
         ).sum()  # actual surface area
-        area2d = len(arr) * res ** 2  # planar surface area
+        area2d = len(arr) * res**2  # planar surface area
         rug = area3d / area2d
     except:
         logger.info(f"Error in rugosity. arr.shape: {arr.shape}")

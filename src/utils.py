@@ -6,6 +6,7 @@ import shutil
 import sys
 from timeit import default_timer as timer
 import itertools
+import subprocess
 
 import numpy as np
 from rasterio.io import MemoryFile
@@ -23,6 +24,35 @@ WBT = whitebox.WhiteboxTools()
 WBT.verbose = False
 
 
+def run_command(cmd: str, logger: logging.getLogger()) -> None:
+    """
+    Execute commands as subprocesses
+
+    Args:
+        cmd: Command to run as a string
+        logger: Logger instance
+
+    Returns: None
+    """
+    try:
+        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        output, err = p.communicate()
+
+        # Get some feedback from the process to print out:
+        if err is None:
+            text = output.decode()
+            print("\n", text, "\n")
+        else:
+            print(err)
+
+    except subprocess.CalledProcessError as e:
+        logger.critical(f"failed to return code: {e}")
+    except OSError as e:
+        logger.critical(f"failed to execute shell: {e}")
+    except IOError as e:
+        logger.critical(f"failed to read file(s): {e}")
+
+
 def setup_logging(huc_id: str, huc_dir: Path) -> tuple[Path, str]:
     """
     Set up logger attrributes
@@ -31,7 +61,6 @@ def setup_logging(huc_id: str, huc_dir: Path) -> tuple[Path, str]:
         huc_dir: Directory to the HUC data
 
     Returns: Path to the log file and the timestamp as a string
-
     """
     # clean logging handlers
     clear_out_logger()
@@ -54,7 +83,6 @@ def initialize_logger(log_file: str) -> logging.getLogger():
         log_file: Path to the log file
 
     Returns: Logger instance
-
     """
     logger = logging.getLogger("logger_loader")
     logging.basicConfig(filename=log_file, filemode="a")
@@ -83,7 +111,6 @@ def open_memory_tif(arr: np.array, meta: rasterio.profiles.Profile) -> MemoryFil
         meta: Profile
 
     Returns: In-memory rasterio dataset
-
     """
     #     with rasterio.Env(GDAL_CACHEMAX=256, GDAL_NUM_THREADS='ALL_CPUS'):
     with MemoryFile() as memfile:
@@ -169,7 +196,6 @@ def reproject_ancillary_data(
         logger: Logger instance
 
     Returns:
-
     """
     # update PHYSIO param based on HUC04
     PHYSIO = PARAMS["physio drb"] if HUC04 == "0204" else PARAMS["physio cbw"]
@@ -237,7 +263,6 @@ def reproject_grid_layer(
         logger: Logger instance
 
     Returns: Path to the output file
-
     """
     # reproject raster plus resample if needed
     # Resolution is a pixel value as a tuple
@@ -290,7 +315,6 @@ def reproject_vector_layer(in_shp: Path, str_target_proj4: str, logger) -> str:
         logger: Logger instance
 
     Returns: Path to the re-projected layer
-
     """
     proj_shp = in_shp.parent / f"{in_shp.stem}_proj.shp"
 
@@ -331,7 +355,6 @@ def clip_nhdhr_using_grid(
         mask_shp: Path to a polygon mask
 
     Returns: None, saves clipped file to disk
-
     """
     # clip features using HUC mask, if the mask doesn't exist polygonize DEM
     mask_shp = Path(mask_shp)
@@ -386,7 +409,6 @@ def watershed_polygonize(in_tif: str, out_shp: str, dst_crs: str, logger) -> Non
         logger: Logger instance
 
     Returns: None, saves output file to disk
-
     """
     logger.info("Polygonizing reach catchments")
     tmp = os.path.dirname(in_tif) + "\\breach_w_tmp.shp"  # tmp DEM mask
@@ -485,7 +507,6 @@ def join_watershed_attrs(w: str, physio: str, net: str, output: str, logger) -> 
         logger: Instance of the logger
 
     Returns: None, saves output file to disk
-
     """
     # 1 - read in watershed polygons
     wsheds = gpd.read_file(str(w))  # watershed grid shp

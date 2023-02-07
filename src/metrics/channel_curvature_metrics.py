@@ -18,7 +18,6 @@ def gauss_kern(sigma):
         sigma:
 
     Returns:
-
     """
 
     sigma = int(sigma)
@@ -71,7 +70,6 @@ def channel_width_from_bank_pixels(
         logger:
 
     Returns:
-
     """
 
     logger.info("Channel width from bank pixels -- segmented reaches:")
@@ -279,12 +277,22 @@ def channel_width_from_bank_pixels(
     return
 
 
-# ===============================================================================
-#  Searchable window with center pixel defined by get_stream_coords_from_features
-# ===============================================================================
 def bankpixels_from_curvature_window(
     df_coords, str_dem_path, str_bankpixels_path, cell_size, use_wavelet_method, logger
 ):
+    """
+    Searchable window with center pixel defined by get_stream_coords_from_features
+
+    Args:
+        df_coords:
+        str_dem_path:
+        str_bankpixels_path:
+        cell_size:
+        use_wavelet_method:
+        logger:
+
+    Returns:
+    """
     logger.info("Bank pixels from curvature windows:")
 
     # Convert df_coords x-y to row-col via DEM affine
