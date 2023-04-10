@@ -20,7 +20,7 @@ and stream slope from DEMs.
 from timeit import default_timer as timer
 
 import pandas as pd
-from setup import config
+from configure import config
 from post_processing import post_process
 import preprocessing
 import utils

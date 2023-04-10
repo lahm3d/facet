@@ -21,7 +21,7 @@ def fp_metrics_chsegs(str_fim_path, str_chwid, str_chanmet_segs, logger):
          (output form channel width from bank pixel method)
         logger: logger instance
 
-    Returns:
+    Returns: None
     """
     # Open the stream network segments layer with channel metrics:
     gdf_segs = gpd.read_file(str(str_chanmet_segs))

@@ -188,7 +188,7 @@ def main():
     |F|A|C|E|T| |S|E|T|U|P|
     +-+-+-+-+-+ +-+-+-+-+-+
 
-    setup.py script will automatically download ancillary datasets needed by FACET from Science Base.
+    configure.py script will automatically download ancillary datasets needed by FACET from Science Base.
     It also updates the config file with ancillary data file paths as well.
     The script takes anywhere from 30 minutes to 1-2 hours to run successfully depending on your internet speed.\n
     '''
