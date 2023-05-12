@@ -896,8 +896,8 @@ def interpolate(arr_in, ind_val):
         out_val = arr_in[int(np.ceil(ind_val))]
     else:
         # it will always be divided by 1
-        out_val = arr_in[np.int(ind_val)] + (ind_val - np.int(ind_val)) * (
-            arr_in[int(np.ceil(ind_val))] - arr_in[np.int(ind_val)])
+        out_val = arr_in[int(ind_val)] + (ind_val - int(ind_val)) * (
+            arr_in[int(np.ceil(ind_val))] - arr_in[int(ind_val)])
 
     return out_val
 
@@ -1456,10 +1456,10 @@ def fim_hand_poly(str_hand_path, str_sheds_path, str_reachid, str_fim_path, str_
 
                     col_min, row_min = ~ds_hand.transform * (bounds[0], bounds[3])
 
-                    row_min = np.int(row_min)
-                    col_min = np.int(col_min)
-                    row_max = np.int(row_min + shp[0])
-                    col_max = np.int(col_min + shp[1])
+                    row_min = int(row_min)
+                    col_min = int(col_min)
+                    row_max = int(row_min + shp[0])
+                    col_max = int(col_min + shp[1])
 
                     arr_w = np.empty(
                         [row_max - row_min, col_max - col_min], dtype=out_meta['dtype']
@@ -1715,10 +1715,10 @@ def bankpixels_from_curvature_window(
 
                 # logger.info('{} | {} -- {}'.format(tpl_row.linkno, j, total_len))
 
-                row_min = np.int(tpl_row.row - np.int(w_height / 2))
-                row_max = np.int(tpl_row.row + np.int(w_height / 2))
-                col_min = np.int(tpl_row.col - np.int(w_width / 2))
-                col_max = np.int(tpl_row.col + np.int(w_width / 2))
+                row_min = int(tpl_row.row - int(w_height / 2))
+                row_max = int(tpl_row.row + int(w_height / 2))
+                col_min = int(tpl_row.col - int(w_width / 2))
+                col_max = int(tpl_row.col + int(w_width / 2))
 
                 # Now get the DEM specified by this window as a numpy array:
                 w = ds_dem.read(1, window=((row_min, row_max), (col_min, col_max)))
@@ -2774,9 +2774,10 @@ def get_stream_coords_from_features(
                 lst_linkno = []
                 lst_order = []
                 for i in int_pts:
-                    i_pt = np.array(line_shply.interpolate(i))
-                    lst_x.append(i_pt[0])
-                    lst_y.append(i_pt[1])
+                    # i_pt = np.array(line_shply.interpolate(i))
+                    i_pt = line_shply.interpolate(i)
+                    lst_x.append(i_pt.x)
+                    lst_y.append(i_pt.y)
                     lst_linkno.append(i_linkno)
                     lst_order.append(i_order)
 
