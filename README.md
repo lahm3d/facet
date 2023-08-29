@@ -2,7 +2,7 @@
 
 This is FACET repo for continuous development (CD) and the published FACET 0.1.0 code can be accessed [here](https://code.usgs.gov/water/facet). There will be large gaps between published and CD repositories in terms of environment, behavior and algorithms. Once we reach a satisfactory point, we will publish the code on `https://code.usgs.gov`.
 
-The repo has two branches `main` and `dev`. The main branch is similar to published code to keep up with library/module and environment updates along with any deprecated behaviors.
+The repo has two branches `main` and `dev`. The main branch is similar to published code to keep up with library/module and environment updates along with any deprecated behaviors, and the `dev` branch is for experimental features.
 
 ---
 
