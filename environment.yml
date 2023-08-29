@@ -1,0 +1,23 @@
+name: facet
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - geopandas
+  - numpy
+  - pandas
+  - pyarrow
+  - python=3.11
+  - rasterio
+  - requests
+  - scipy
+  - shapely
+  - taudem=5.3.8
+  - whitebox
+  - r-base=4.3.1
+  - r-dplyr
+  - r-foreign
+  - r-pastecs
+  - mkdocs
+  - mkdocstrings
+  - mkdocs-material
