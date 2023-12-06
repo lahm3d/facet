@@ -23,7 +23,7 @@ import pandas as pd
 from configure import config
 from post_processing import post_process
 import preprocessing
-import utils
+import utils.utils as utils
 from metrics import (
     channel_cross_section_metrics,
     floodplain_metrics,

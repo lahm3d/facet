@@ -18,7 +18,7 @@ from rasterio import merge
 from rasterio.warp import transform
 from shapely.geometry import mapping, LineString, Point
 
-import utils
+import utils.utils as utils
 
 np.seterr(over="raise")
 

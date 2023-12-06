@@ -5,7 +5,7 @@ import rasterio
 import fiona
 import pandas as pd
 
-from src import utils
+from utils import utils
 
 
 def find_bank_angles(
