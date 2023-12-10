@@ -1,0 +1,79 @@
+# FACET filepaths for input, intermediate and output data
+
+# [inputs]
+flowlines = "flowlines.shp"
+dem = "dem.tif"
+catchment = "catchment.shp"
+hill_shade = "hs.tif"
+
+# [pre-process]
+road_rail_crossings = "rr_crossings.shp"
+burn_crossings = "burn_crossings.tif"
+denoise = "denoise.tif"
+fill_pits = "fill_pits.tif"
+breach = "breach.tif"
+initiation_pixels = "initiation_pixels.tif" #wg
+slope_grid_sd8  = "slope_grid_sd8.tif" #sd8
+area_grid_ad8 = "area_grid_ad8.tif" #ad8_no_wg
+area_grid_ad8_ip = "area_grid_ad8_ip.tif" #ad8_wg
+network_order = "network_order.tif" #ord_g
+network_tree = "network_tree.txt" #tree
+network_coords = "network_coords.txt" #coord
+network_rast = "network.shp" #net
+network_poly = "network.tif" #net
+sub_catchments_rast = "sub_watersheds.tif" #w
+sub_catchments_poly = "sub_watersheds.shp" #wshed_physio
+slope_grid_dinf = "slope_grid_dinf.tif" #slp
+flow_dir_dinf = "flow_dir_dinf.tif" #ang
+hand = "hand.tif" #dd
+
+# [cross-section-method]
+xn_coordinates = "xn_coordinates.csv"
+channel_xns = "channel_xns.shp" # _channel_xns.shp
+bank_points = "bank_points.shp" # bankpoints_1D_metrics.shp
+bank_pixels = "bank_pixels.tif" # _bankpixels.tif
+flood_extent_layer = "floodplain.tif" # _floodplain.tif
+flood_height_thresholds = "flood_height_thresholds.csv" # _floodplain_hand_height.csv
+floodplain_xns = "floodplain_xns.shp" # _floodplain_xns_1D_metrics.shp
+
+# [hand-method]
+hand_metrics = "hand_metrics.shp"
+
+# [inputs]
+# flowlines = "flowlines.shp"
+# dem = "dem.tif"
+# catchment = "catchment.shp"
+# hill_shade = "hs.tif"
+
+# [pre-process]
+# road_rail_crossings = "rr_crossings.shp"
+# burn_crossings = "burn_crossings.tif"
+# denoise = "denoise.tif"
+# fill_pits = "fill_pits.tif"
+# breach = "breach.tif"
+# initiation_pixels = "initiation_pixels.tif" #wg
+# slope_grid_sd8  = "slope_grid_sd8.tif" #sd8
+# area_grid_ad8 = "area_grid_ad8.tif" #ad8_no_wg
+# area_grid_ad8_ip = "area_grid_ad8_ip.tif" #ad8_wg
+# network_order = "network_order.tif" #ord_g
+# network_tree = "network_tree" #tree
+# network_coords = "network_coords" #coord
+# network_rast = "network.shp" #net
+# network_poly = "network.tif" #net
+# sub_catchments_rast = "sub_watersheds.tif" #w
+# sub_catchments_poly = "sub_watersheds.shp" #wshed_physio
+# slope_grid_dinf = "slope_grid_dinf" #slp
+# flow_dir_dinf = "flow_dir_dinf.tif" #ang
+# hand = "hand" #dd
+
+# [cross-section-method]
+# xn_coordinates = "xn_coordinates.csv"
+# channel_xns = "channel_xns.shp" # _channel_xns.shp
+# bank_points = "bank_points.shp" # bankpoints_1D_metrics.shp
+# bank_pixels = "bank_pixels.tif" # _bankpixels.tif
+# flood_extent_layer = "floodplain.tif" # _floodplain.tif
+# flood_height_thresholds = "flood_height_thresholds.csv" # _floodplain_hand_height.csv
+# floodplain_xns = "floodplain_xns.shp" # _floodplain_xns_1D_metrics.shp
+
+# [hand-method]
+# hand_metrics = "hand_metrics.shp"

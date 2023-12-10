@@ -1,0 +1,116 @@
+[ancillary]
+data = "c:/chesapeake_bay/sample_data"
+streams = "c:/chesapeake_bay/ancillary_data/streams.shp"
+nhd_area = "c:/chesapeake_bay/ancillary_data/nhd_area.shp"
+nhd_wbds = "c:/chesapeake_bay/ancillary_data/nhd_wbds.shp"
+physiography = "c:/chesapeake_bay/ancillary_data/physiographic_regions_CBW.shp"
+census_roads = "c:/chesapeake_bay/ancillary_data/census_roads_2018_mid_atlantic_states.shp"
+census_rails = "c:/chesapeake_bay/ancillary_data/census_rails_2018_mid_atlantic_states.shp"
+
+[debug]
+version = "test-01" # short description of version
+
+[spatial-ref]
+epsg = "5070"
+crs = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
+
+[batch_processing]
+batch_list = ["000000000000", "000000000001", "000000000002",]
+skip_list = ["000000000000", "000000000001", "000000000002",]
+
+[preprocess]
+preprocess = true
+    
+    [preprocess.burn_stream_at_roads]
+    width = 300
+
+    [preprocess.denoise]
+    filter_size = 11
+    norm_diff = 10
+    num_iter = 3
+
+    [preprocess.breach_depression_least_cost]
+    dist = 300 # maximum search distance for breach paths in cells
+    fill = true
+
+    [preprocess.reach-order]
+    reach_id = "LINKNO"
+    order_id = "strmOrder"
+
+    [preprocess.taudem]
+    cores = 2
+    resample = 3
+
+[methods]
+
+    [methods.cross_section]
+    parm_ivert = 0.2
+    parm_ratiothresh = 1.5
+    parm_slpthresh = 0.03
+    p_xngap = 3
+
+    [methods.curvature]
+    use_wavelet_curvature_method = true
+    i_step = 100
+    max_buff = 30
+
+[postprocess]
+post-process = true
+stream-buffer = 60
+r-exe-path = "c:/Program Files/R/.../bin/RScript.exe"
+clean = false
+archive = false
+
+
+#####################
+# old
+
+# [file-paths]
+# data_dir = "c:/chesapeake_bay/sample_data"
+# ancillary-dir = "c:/chesapeake_bay/ancillary_data"
+# physio-cbw = "c:/chesapeake_bay/ancillary_data/physiographic_regions_CBW.shp"
+# physio-drb = "c:/chesapeake_bay/ancillary_data/physiographic_regions_DRB.shp"
+# census-roads = "c:/chesapeake_bay/ancillary_data/census_roads_2018_mid_atlantic_states.shp"
+# census-rails = "c:/chesapeake_bay/ancillary_data/census_rails_2018_mid_atlantic_states.shp"
+
+# [spatial-ref]
+# crs = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
+
+# [skip-HUCs]
+# skip_list = ""
+
+# [pre-process-dem]
+# taudem = true
+# taudem-cores = 2
+# wt_grid = true
+# resample-resolution = 3
+
+# [breach-options]
+# pre-condition-dem_fast-breach = true
+# fast-breach = false
+
+# [reach-and-order]
+# reach_id = "LINKNO"
+# order_id = "strmOrder"
+
+# [cross-section-method]
+# parm_ivert = 0.2
+# parm_ratiothresh = 1.5
+# parm_slpthresh = 0.03
+# p_xngap = 3
+
+# [width-from-curvature-via-buff-method]
+# use_wavelet_curvature_method = true
+# i_step = 100
+# max_buff = 30
+
+# [post-processing]
+# post-process = true
+# stream-buffer = 60
+# r-exe-path = "c:/Program Files/R/.../bin/RScript.exe"
+# clean = false
+# archive = false
+
+
+
+#########################
