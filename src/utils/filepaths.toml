@@ -5,6 +5,7 @@ flowlines = "flowlines.shp"
 dem = "dem.tif"
 catchment = "catchment.shp"
 hill_shade = "hs.tif"
+physiography = "physiography.shp"
 
 # [pre-process]
 road_rail_crossings = "rr_crossings.shp"
@@ -38,6 +39,7 @@ floodplain_xns = "floodplain_xns.shp" # _floodplain_xns_1D_metrics.shp
 
 # [hand-method]
 hand_metrics = "hand_metrics.shp"
+
 
 # [inputs]
 # flowlines = "flowlines.shp"
