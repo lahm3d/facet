@@ -48,16 +48,26 @@ class CreateFilepaths:
     paths: InitVar[dict]
 
     def __post_init__(self, paths):
+        inputs = [
+            'flowlines', 'dem', 'catchment', 'hs', 'physiography'
+            ]
         for key, value in paths.items():
             stem, suffix = value.split('.')
-            if self.version == "":
+            if stem in inputs:
                 parent = Path(self.folder) / f"huc_{self.huc}"
                 basename = f"{self.huc}_{stem}.{suffix}"
             else:
-                parent = Path(self.folder) / f"huc_{self.huc}" / self.version
-                basename = f"{self.huc}_{stem}_{self.version}.{suffix}"
+                if self.version == "":
+                    parent = Path(self.folder) / f"huc_{self.huc}"
+                    basename = f"{self.huc}_{stem}.{suffix}"
+                else:
+                    parent = Path(self.folder) / f"huc_{self.huc}" / self.version
+                    basename = f"{self.huc}_{stem}_{self.version}.{suffix}"
             fpath = parent / basename         
             setattr(self, key, fpath)
+        # add parent folder 
+        setattr(self, "parent", Path(self.folder) / f"huc_{self.huc}")
+
 
     def __repr__(self):
         attr_list = [f"{attr}={getattr(self, attr)}" for attr in self.__dict__ if not attr.startswith('_')]
@@ -68,16 +78,17 @@ def class_to_dict(object):
     return object.__dict__
 
 
-def create_config_and_filepath_objects(config_toml, paths_toml, huc):
+def create_config(config_toml):
     config = read_toml(config_toml)
-    CONFIG = CreateConfig(config=config)
+    return CreateConfig(config=config)
 
+def create_filepaths(paths_toml, config, huc):
     paths = read_toml(paths_toml)
-    PATHS = CreateFilepaths(
-        folder=CONFIG.ancillary['data'],
+    Paths = CreateFilepaths(
+        folder=config.ancillary['data'],
         huc=huc,
-        version=CONFIG.debug['version'],
+        version=config.debug['version'],
         paths=paths
     )
 
-    return CONFIG, PATHS
+    return Paths
