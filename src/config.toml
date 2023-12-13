@@ -12,7 +12,7 @@ census_rails = "c:/chesapeake_bay/ancillary_data/census_rails_2018_mid_atlantic_
 [debug]
 version = "test-01" # short description of version
 
-[spatial-ref]
+[spatial_ref]
 epsg = "5070"
 crs = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
 
@@ -20,7 +20,7 @@ crs = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +dat
 preprocess = true
     
     [preprocess.burn_stream_at_roads]
-    width = 300
+    width = 100
 
     [preprocess.denoise]
     filter_size = 11
@@ -39,13 +39,42 @@ preprocess = true
     cores = 2
     resample = 3
 
+[xn_lengths]
+    [xn_lengths.channel]
+    "1".xn_len = 20
+    "1".pf_len = 3
+    "2".xn_len = 23
+    "2".pf_len = 6
+    "3".xn_len = 40
+    "3".pf_len = 9
+    "4".xn_len = 60
+    "4".pf_len = 12
+    "5".xn_len = 80
+    "5".pf_len = 15
+    "6".xn_len = 150
+    "6".pf_len = 20
+
+    [xn_lengths.floodplain]
+    "1".xn_len = 50
+    "1".pf_len = 5
+    "2".xn_len = 75
+    "2".pf_len = 8
+    "3".xn_len = 100
+    "3".pf_len = 12
+    "4".xn_len = 150
+    "4".pf_len = 20
+    "5".xn_len = 200
+    "5".pf_len = 30
+    "6".xn_len = 500
+    "6".pf_len = 40
+
 [methods]
 
     [methods.cross_section]
     parm_ivert = 0.2
     parm_ratiothresh = 1.5
     parm_slpthresh = 0.03
-    p_xngap = 3
+    p_xngap = 10
 
     [methods.curvature]
     use_wavelet_curvature_method = true
