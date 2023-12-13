@@ -49,7 +49,7 @@ class CreateFilepaths:
 
     def __post_init__(self, paths):
         inputs = [
-            'flowlines', 'dem', 'catchment', 'hs', 'physiography'
+            'flowlines', 'dem', 'watershed', 'hs', 'physiography'
             ]
         for key, value in paths.items():
             stem, suffix = value.split('.')
