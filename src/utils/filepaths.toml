@@ -3,7 +3,7 @@
 # [inputs]
 flowlines = "flowlines.shp"
 dem = "dem.tif"
-catchment = "catchment.shp"
+watershed = "watershed.shp"
 hill_shade = "hs.tif"
 physiography = "physiography.shp"
 
@@ -22,8 +22,8 @@ network_tree = "network_tree.txt" #tree
 network_coords = "network_coords.txt" #coord
 network_rast = "network.shp" #net
 network_poly = "network.tif" #net
-sub_catchments_rast = "sub_watersheds.tif" #w
-sub_catchments_poly = "sub_watersheds.shp" #wshed_physio
+sub_watersheds_rast = "sub_watersheds.tif" #w
+sub_watersheds_poly = "sub_watersheds.shp" #wshed_physio
 slope_grid_dinf = "slope_grid_dinf.tif" #slp
 flow_dir_dinf = "flow_dir_dinf.tif" #ang
 hand = "hand.tif" #dd
@@ -44,7 +44,7 @@ hand_metrics = "hand_metrics.shp"
 # [inputs]
 # flowlines = "flowlines.shp"
 # dem = "dem.tif"
-# catchment = "catchment.shp"
+# watershed = "watershed.shp"
 # hill_shade = "hs.tif"
 
 # [pre-process]
@@ -62,8 +62,8 @@ hand_metrics = "hand_metrics.shp"
 # network_coords = "network_coords" #coord
 # network_rast = "network.shp" #net
 # network_poly = "network.tif" #net
-# sub_catchments_rast = "sub_watersheds.tif" #w
-# sub_catchments_poly = "sub_watersheds.shp" #wshed_physio
+# sub_watersheds_rast = "sub_watersheds.tif" #w
+# sub_watersheds_poly = "sub_watersheds.shp" #wshed_physio
 # slope_grid_dinf = "slope_grid_dinf" #slp
 # flow_dir_dinf = "flow_dir_dinf.tif" #ang
 # hand = "hand" #dd
