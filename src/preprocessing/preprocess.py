@@ -47,8 +47,7 @@ def merge_rails_and_roads(aoi_rails, aoi_roads, mask, output):
 def hydro_condition_dem(Config, Paths):
     wbt = whitebox.WhiteboxTools()
     wbt._WhiteboxTools__compress_rasters = "True"
-    wbt.set_verbose_mode(True)
-    # whitebox.download_wbt(linux_musl=True, reset=True)
+    wbt.set_verbose_mode(False)
 
     merge_rails_and_roads(
         Config.ancillary['census_rails'], 

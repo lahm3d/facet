@@ -41,6 +41,10 @@ from preprocessing import preprocess, cross_sections
 #     channel_curvature_metrics,
 # )
 
+# Debug WBT compile issue only on WSL Ubuntu 20.0
+# whitebox.download_wbt(linux_musl=True, reset=True)
+
+
 if __name__ == "__main__":
 
 
