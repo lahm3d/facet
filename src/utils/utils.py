@@ -24,6 +24,14 @@ WBT = whitebox.WhiteboxTools()
 WBT.verbose = False
 
 
+def create_folder(Paths):
+
+    if Paths.version != "":
+        (Path(Paths.parent) / Paths.version).mkdir(parents=True, exist_ok=True)
+    else:
+        (Path(Paths.parent) / Paths.version).mkdir(parents=True, exist_ok=True)
+
+
 def run_command(cmd: str, logger: logging.getLogger()) -> None:
     """
     Execute commands as subprocesses
