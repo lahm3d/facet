@@ -1,5 +1,5 @@
 
-import tomli
+import tomllib
 from pathlib import Path
 from dataclasses import dataclass, InitVar, field
 
@@ -26,7 +26,7 @@ def read_toml(file):
     """
     if file.is_file():
         with open(file, mode="rb") as fp:
-            return tomli.load(fp)
+            return tomllib.load(fp)
     else:
         raise FileNotFoundError(f'{file}: File not found!')
 
