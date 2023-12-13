@@ -234,7 +234,7 @@ def run_command(cmd: str) -> None:
 
 
 def run_preprocessing_steps(Config, Paths):
-    # clip_flowlines(Config.ancillary['flowlines'], Paths.watershed, Paths.flowlines)
+    clip_flowlines(Config.ancillary['flowlines'], Paths.watershed, Paths.flowlines)
     hydro_condition_dem(Config, Paths)
     create_weight_grid_from_streamlines(Paths.flowlines, Paths.dem, Paths.initiation_pixels)
     delineate_elevation_aligned_stream_network(Config, Paths)
