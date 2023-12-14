@@ -185,7 +185,11 @@ def write_xns_shp(df_coords, epsg, xn_file, p_xngap, xn_type):
 
             # NOTE: Define Xn length (p_xnlength) and other parameters relative to stream order
             # Settings for stream channel cross-sections:
-            p_xnlength, p_fitlength = xn_type[str(i_order)].values()
+            if i_order > 6:
+                order_no = 6
+            else:
+                order_no = i_order
+            p_xnlength, p_fitlength = xn_type[str(order_no)].values()
 
             reach_len = len(df_linkno["x"])
 
