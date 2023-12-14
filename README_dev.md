@@ -8,16 +8,16 @@ The repo has two branches `main` and `dev`. The main branch is similar to publis
 
 Install git or github desktop and clone 
 
-        `https://github.com/lahm3d/facet.git`
+        https://github.com/lahm3d/facet.git - b dev
 
 
 Install miniconda3 or anaconda: https://docs.conda.io/projects/miniconda/en/latest/
 
-        `cd c:/folder-where-you-cloned-or-unzipped-facet-repo`
+        cd c:/folder-where-you-cloned-or-unzipped-facet-repo
 
 Install conda environment
 
-        `conda env create -f environment.yml`
+        conda env create -f environment.yml
 
 Navigate to `facet/src/config.toml` and edit the following values:
 
@@ -61,6 +61,12 @@ The folder structure has been reorganized but not finalized. If no version is pr
         ├── 020600031001_hand_ver-01.tif
         └── 020600031001_sub_watersheds_ver-01.shp
 ```
+
+To run facet, first open miniconda window:
+
+        cd c:/folder-where-you-cloned-or-unzipped-facet-repo
+        conda activate facet
+        python src/facet.py
 
 
 ## Reporting bugs
