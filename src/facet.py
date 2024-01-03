@@ -24,10 +24,12 @@ from pathlib import Path
 from utils import parse_toml, utils
 from utils.batch import generate_processing_batch
 from preprocessing import preprocess, cross_sections
+from metrics import channel_cross_section_metrics as channel_metrics 
 
 # from src.utils import parse_toml, utils
 # from src.utils.batch import generate_processing_batch
 # from src.preprocessing import preprocess, cross_sections
+# from src.metrics import channel_cross_section_metrics as channel_metrics 
 
 # import pandas as pd
 # from configure import config
@@ -79,6 +81,7 @@ if __name__ == "__main__":
         preprocess.run_preprocessing_steps(Config, Paths)
 
         cross_sections.generate(Config, Paths, cell_size=1)
+        channel_metrics.derive(Paths.channel_xns, Paths.dem, Paths.bank_points, Config.methods['cross_section'], Config.spatial_ref['epsg'], logger)
 
         stop = timer() - start
         print(f"{timer() - start} seconds")

@@ -3,14 +3,14 @@ from math import ceil, atan
 import numpy as np
 import rasterio
 import fiona
+from fiona.crs import CRS
 import pandas as pd
+import geopandas as gpd
 
-from utils import utils
+# from utils import utils
 
 
-def find_bank_angles(
-    tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert, xn_ptdistance, logger
-):
+def find_bank_angles(tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert, xn_ptdistance, logger):
     """
     Calculate angle from vertical of left and right banks
 
@@ -604,8 +604,8 @@ def interpolate(arr_in, ind_val):
         out_val = arr_in[int(np.ceil(ind_val))]
     else:
         # it will always be divided by 1
-        out_val = arr_in[np.int(ind_val)] + (ind_val - np.int(ind_val)) * (
-            arr_in[int(np.ceil(ind_val))] - arr_in[np.int(ind_val)]
+        out_val = arr_in[int(ind_val)] + (ind_val - int(ind_val)) * (
+            arr_in[int(np.ceil(ind_val))] - arr_in[int(ind_val)]
         )
 
     return out_val
@@ -613,15 +613,15 @@ def interpolate(arr_in, ind_val):
 
 def chanmetrics_bankpts(
     df_xn_elev,
-    str_xnsPath,
-    str_demPath,
-    str_bankptsPath,
+    channel_xns,
+    dem,
+    bank_points,
     parm_ivert,
     XnPtDist,
     parm_ratiothresh,
     parm_slpthresh,
+    epsg,
     logger,
-    spatial_ref,
 ):
     """
     Calculate channel metrics based on the bankpoint slope-threshold method at each Xn,
@@ -629,15 +629,15 @@ def chanmetrics_bankpts(
 
     Args:
         df_xn_elev:
-        str_xnsPath:
-        str_demPath:
-        str_bankptsPath:
+        channel_xns:
+        dem:
+        bank_points:
         parm_ivert:
         XnPtDist:
         parm_ratiothresh:
         parm_slpthresh:
         logger:
-        spatial_ref:
+        epsg:
 
     Returns:
     """
@@ -647,16 +647,15 @@ def chanmetrics_bankpts(
     # << BEGIN LOOP >>
     # Do the rest by looping in strides, rather than all at once, to conserve memory:
     # (possibly using multiprocessing)
-    xn_count = utils.get_feature_count(str_xnsPath)
+    xn_count = gpd.read_file(channel_xns).shape[0]
 
     # Striding:
     arr_strides = np.linspace(0, xn_count, int(xn_count / 100))
     arr_strides = np.delete(arr_strides, 0)
 
     # Now loop over the linknos to get access grid by window:
-    with rasterio.open(str_demPath) as ds_dem:
+    with rasterio.open(dem) as ds_dem:
 
-        dem_crs = spatial_ref
         nodata_val = ds_dem.nodata
 
         # Define the schema for the output bank points shapefile:
@@ -675,10 +674,10 @@ def chanmetrics_bankpts(
         schema = {"geometry": "Point", "properties": properties_dtypes}
 
         with fiona.open(
-            str(str_bankptsPath),
+            bank_points,
             "w",
             driver="ESRI Shapefile",
-            crs=dem_crs,
+            crs=CRS.from_epsg(int(epsg)),
             schema=schema,
         ) as bankpts:
             j = 0
@@ -792,14 +791,14 @@ def chanmetrics_bankpts(
                     bankpts.write({"geometry": rt_pt, "properties": prop_rt})
 
 
-def read_xns_shp_and_get_dem_window(str_xns_path, str_dem_path, logger):
+def read_xns_shp_and_get_dem_window(channel_xns, dem, logger):
     """
     Read an existing Xn file, calculate xy bounds for each linkno and read the DEM
      according to that window
 
     Args:
-        str_xns_path:
-        str_dem_path:
+        channel_xns:
+        dem:
         logger:
 
     Returns:
@@ -818,7 +817,7 @@ def read_xns_shp_and_get_dem_window(str_xns_path, str_dem_path, logger):
 
     #    start_time = timeit.default_timer()
     # First get all linknos:
-    with fiona.open(str(str_xns_path), "r") as xn_shp:
+    with fiona.open(channel_xns, "r") as xn_shp:
         # Read each feature line:
         for line in xn_shp:
             lst_linknos.append(line["properties"]["linkno"])
@@ -840,7 +839,7 @@ def read_xns_shp_and_get_dem_window(str_xns_path, str_dem_path, logger):
     )
 
     # Now loop over the linknos to get access grid by window:
-    with rasterio.open(str(str_dem_path)) as ds_dem:
+    with rasterio.open(dem) as ds_dem:
 
         nodata_val = (
             ds_dem.nodata
@@ -919,7 +918,7 @@ def read_xns_shp_and_get_dem_window(str_xns_path, str_dem_path, logger):
                 # xnptdist = xn_len/len(lst_xnrow)
                 try:
                     arr_zi = w[
-                        lst_xnrow.astype(np.int), lst_xncol.astype(np.int)
+                        lst_xnrow.astype(int), lst_xncol.astype(int)
                     ]  # nearest-neighbor
                 except:
                     continue
@@ -945,3 +944,26 @@ def read_xns_shp_and_get_dem_window(str_xns_path, str_dem_path, logger):
     return pd.DataFrame(
         lst_all_zi, columns=["linkno", "elev", "xn_row", "xn_col", "strmord"]
     )
+
+
+def derive(channel_xns, dem, bank_points, params, epsg, logger):
+    XnPtDist = 1 # same as resolution
+
+    # channel_xns, dem, bank_points, params, epsg = Paths.channel_xns, Paths.dem, Paths.bank_points, Config.methods['cross_section'], Config.spatial_ref['epsg']
+
+    df_xn_elev = read_xns_shp_and_get_dem_window(channel_xns, dem, logger)
+    # df_xn_elev.to_csv(str_csv_path)
+
+
+    chanmetrics_bankpts(
+        df_xn_elev,
+        channel_xns,
+        dem,
+        bank_points,
+        params['parm_ivert'],
+        XnPtDist,
+        params['parm_ratiothresh'],
+        params['parm_slpthresh'],
+        epsg,
+        logger,
+        )
