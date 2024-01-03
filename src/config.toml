@@ -2,7 +2,7 @@ batch_csv = "c:/chesapeake_bay/sample_data/batch.csv"
 
 [ancillary]
 data = "c:/chesapeake_bay/sample_data"
-streams = "s3://gis-data.chesapeakebay.net/public/facet_misc_data/NHDPlus_HR_NetworkFlowline.parquet"
+flowlines = "s3://gis-data.chesapeakebay.net/public/facet_misc_data/NHDPlus_HR_NetworkFlowline.parquet"
 nhd_area = "s3://gis-data.chesapeakebay.net/public/facet_misc_data/NHDPlus_HR_Area.parquet"
 nhd_wbds = "s3://gis-data.chesapeakebay.net/public/facet_misc_data/NHDPlus_HR_Waterbody.parquet"
 physiography = "s3://gis-data.chesapeakebay.net/public/facet_misc_data/physiography_orig.parquet"
