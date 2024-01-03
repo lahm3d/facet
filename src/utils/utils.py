@@ -61,27 +61,26 @@ def run_command(cmd: str, logger: logging.getLogger()) -> None:
         logger.critical(f"failed to read file(s): {e}")
 
 
-def setup_logging(huc_id: str, huc_dir: Path) -> tuple[Path, str]:
-    """
-    Set up logger attrributes
-    Args:
-        huc_id: HUC ID code
-        huc_dir: Directory to the HUC data
+# def setup_logging(log_file: Path):
+#     """
+#     Set up logger attrributes
+#     Args:
+#         huc_id: HUC ID code
+#         huc_dir: Directory to the HUC data
 
-    Returns: Path to the log file and the timestamp as a string
-    """
-    # clean logging handlers
-    clear_out_logger()
-    # construct time stamps and log file name
-    st_tstamp = strftime(
-        "%a, %d %b %Y %I:%M:%S %p"
-    )  # e.g. Thu, 19 Sep 2019 12:20:41 PM
-    log_name = huc_id + strftime("_%y%m%d.log")
-    log_file = huc_dir / log_name
-    # delete old log file - it will not delete old logs from previous dates
-    if log_file.is_file():
-        os.remove(log_file)
-    return log_file, st_tstamp
+#     Returns: Path to the log file and the timestamp as a string
+#     """
+#     # clean logging handlers
+#     clear_out_logger()
+#     # construct time stamps and log file name
+#     # st_tstamp = strftime(
+#     #     "%a, %d %b %Y %I:%M:%S %p"
+#     # )  # e.g. Thu, 19 Sep 2019 12:20:41 PM
+#     # log_file = huc_dir / f'{huc_id}_{strftime("_%y%m%d.log")}'
+#     # delete old log file - it will not delete old logs from previous dates
+#     if log_file.is_file():
+#         os.remove(log_file)
+#     return log_file #, st_tstamp
 
 
 def initialize_logger(log_file: str) -> logging.getLogger():
@@ -92,6 +91,12 @@ def initialize_logger(log_file: str) -> logging.getLogger():
 
     Returns: Logger instance
     """
+
+    clear_out_logger()
+
+    if log_file.exists():
+        log_file.unlink()
+
     logger = logging.getLogger("logger_loader")
     logging.basicConfig(filename=log_file, filemode="a")
     logger.setLevel(logging.INFO)

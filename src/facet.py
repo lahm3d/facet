@@ -64,6 +64,9 @@ if __name__ == "__main__":
 
         utils.create_folder(Paths)
 
+        # logging
+        logger = utils.initialize_logger(Paths.log)
+
         # Paths_dict = parse_toml.class_to_dict(Paths)
         # for k,v in Paths_dict.items():
         #     print(v)
@@ -71,10 +74,7 @@ if __name__ == "__main__":
         # start HUC processing time
         start = timer()
 
-        # set-up logging
-        # log_file, time_stamp = utils.setup_logging(huc, Paths.parent)
-        # logger = utils.initialize_logger(log_file)
-        # logger.info(f"Running {HUCID}. Start time stamp: {time_stamp}")
+        logger.info(f"Running {huc}...")
 
         preprocess.run_preprocessing_steps(Config, Paths)
 

@@ -1,6 +1,7 @@
 # FACET filepaths for input, intermediate and output data
 
 # [inputs]
+log = "log.log"
 flowlines = "flowlines.shp"
 dem = "dem.tif"
 watershed = "watershed.shp"
