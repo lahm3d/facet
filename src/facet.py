@@ -23,7 +23,7 @@ from pathlib import Path
 
 from utils import parse_toml, utils
 from utils.batch import generate_processing_batch
-from preprocessing import preprocess, cross_sections
+from preprocessing import preprocess, cross_sections, network_smoothing
 from metrics import channel_cross_section_metrics as channel_metrics 
 
 # from src.utils import parse_toml, utils
@@ -79,6 +79,13 @@ if __name__ == "__main__":
         logger.info(f"Running {huc}...")
 
         preprocess.run_preprocessing_steps(Config, Paths)
+
+        #### EXPERIMENTAL NETWORK SMOOTHING ####
+        # test sample smoothing using 3 refinements
+        # untoggle if you want to use smooth version instead of taudem derieved stream network:
+        # smooth_network = Paths.network_poly.parent / Paths.network_poly.name.replace('network', 'smooth_network')
+        # network_smoothing.apply_chaikins_corner_cutting(Paths.network_poly, smooth_network, refinements=3)
+        # Paths.network_poly = smooth_network
 
         cross_sections.generate(Config, Paths, cell_size=1)
         channel_metrics.derive(Paths.channel_xns, Paths.dem, Paths.bank_points, Config.methods['cross_section'], Config.spatial_ref['epsg'], logger)
