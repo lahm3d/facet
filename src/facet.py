@@ -25,6 +25,7 @@ from utils import parse_toml, utils
 from utils.batch import generate_processing_batch
 from preprocessing import preprocess, cross_sections, network_smoothing
 from metrics import channel_cross_section_metrics as channel_metrics 
+from metrics import channel_curvature_metrics as curvature_metrics
 
 # from src.utils import parse_toml, utils
 # from src.utils.batch import generate_processing_batch
