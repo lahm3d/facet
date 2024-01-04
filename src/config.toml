@@ -15,6 +15,7 @@ version = "test-01" # short description of version
 [spatial_ref]
 epsg = "5070"
 crs = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
+cell_size = 1
 
 [preprocess]
 preprocess = true
@@ -77,7 +78,15 @@ preprocess = true
     p_xngap = 10
 
     [methods.curvature]
-    use_wavelet_curvature_method = true
+    # note: for stream orders 5 & 6 the respective windows dimensions increase to 40x40 and 80x80
+    # this is hardcoded
+    win_height = 20 #rows 
+    win_width = 20 #cols
+    buffer = 3 # no. of cells
+    curve_threshold = 0.30 # 3m DEM
+    minimum_window_size = 9
+    method = "wavelet"  # default
+    # method = "mean"
     i_step = 100
     max_buff = 30
 

@@ -2,7 +2,8 @@ import rasterio
 import numpy as np
 import fiona
 from shapely.geometry import LineString, mapping
-
+import pandas as pd
+from scipy import signal
 
 def gauss_kern(sigma):
     """
@@ -46,11 +47,173 @@ def gauss_kern(sigma):
     return g2x, g2y
 
 
+def bankpixels_from_curvature_window(
+    df_coords,
+    cell_size, 
+    win_height, 
+    win_width, 
+    buffer, 
+    curve_threshold, 
+    minimum_window_size,
+    dem,
+    method,
+    bank_pixels,
+    logger
+):
+    """
+    Searchable window with center pixel defined by get_stream_coords_from_features
+
+    Args:
+        df_coords:
+        dem:
+        bank_pixels:
+        cell_size:
+        method:
+        logger:
+
+    Returns:
+    """
+    logger.info("Bank pixels from curvature windows:")
+
+    # Convert df_coords x-y to row-col via DEM affine
+    # Loop over center row-col pairs accessing the window
+    # Now loop over the linknos to get access grid by window:
+
+    # << PARAMETERS >>
+    # cell_size = int(cell_size)
+
+    # # 3 m:
+    # w_height = 20  # number of rows
+    # w_width = 20  # number of columns
+    # buff = 3  # number of cells
+    # curve_thresh = 0.30  # good for 3m DEM
+
+    j = 0
+
+    try:
+        # select the scale sigma=1
+        sigma = 1.0
+        g2x1, g2y1 = gauss_kern(sigma)
+
+        with rasterio.open(dem) as ds_dem:
+
+            # Transform to pixel space
+            df_coords["col"], df_coords["row"] = ~ds_dem.transform * (
+                df_coords["x"],
+                df_coords["y"],
+            )
+            df_coords[["row", "col"]] = df_coords[["row", "col"]].astype(np.int32)
+            df_coords.drop_duplicates(
+                ["col", "row"], inplace=True
+            )  # rounding to integer
+            # total_len = len(df_coords.index)
+
+            out_meta = ds_dem.meta.copy()
+            # no need for float32 for bankpixels to save size of output
+            out_meta["dtype"] = rasterio.uint8
+            out_meta["compress"] = "lzw"
+
+            arr_bankpts = np.zeros(
+                [out_meta["height"], out_meta["width"]], dtype=out_meta["dtype"]
+            )
+
+            for tpl_row in df_coords.itertuples():
+
+                if tpl_row.order == 5:
+                    w_height = 40  # number of rows
+                    w_width = 40  # number of columns
+                if tpl_row.order >= 6:
+                    w_height = 80
+                    w_width = 80
+
+                j += 1
+
+                # logger.info('{} | {} -- {}'.format(tpl_row.linkno, j, total_len))
+
+                row_min = int(tpl_row.row - int(w_height / 2))
+                row_max = int(tpl_row.row + int(w_height / 2))
+                col_min = int(tpl_row.col - int(w_width / 2))
+                col_max = int(tpl_row.col + int(w_width / 2))
+
+                # Now get the DEM specified by this window as a numpy array:
+                w = ds_dem.read(1, window=((row_min, row_max), (col_min, col_max)))
+
+                # Then extract the internal part of the window that contains the rotated window
+                w[
+                    w > 9999999.0
+                ] = 0.0  # NoData values may have been corrupted by preprocessing
+                w[w < -9999999.0] = 0.0
+
+                # make sure a window of appropriate size was returned from the DEM
+                if np.size(w) > 9:
+
+                    if method == 'wavelet':
+                        # === Wavelet Curvature from Chandana ===
+                        gradfx1 = signal.convolve2d(
+                            w, g2x1, boundary="symm", mode="same"
+                        )
+                        gradfy1 = signal.convolve2d(
+                            w, g2y1, boundary="symm", mode="same"
+                        )
+
+                        w_curve = gradfx1 + gradfy1
+
+                        # Pick out bankpts:
+                        w_curve[w_curve < np.max(w_curve) * curve_thresh] = 0.0
+
+                    elif method == 'mean':
+                        # Mean Curvature:
+                        Zy, Zx = np.gradient(w, cell_size)
+                        Zxy, Zxx = np.gradient(Zx, cell_size)
+                        Zyy, _ = np.gradient(Zy, cell_size)
+
+                        try:
+                            w_curve = (
+                                (Zx**2 + 1) * Zyy
+                                - 2 * Zx * Zy * Zxy
+                                + (Zy**2 + 1) * Zxx
+                            )
+                            w_curve = -w_curve / (2 * (Zx**2 + Zy**2 + 1) ** (1.5))
+                        except:
+                            logger.info(
+                                "Error calculating Curvature in window:skipping"
+                            )
+                            continue
+
+                        w_curve[w_curve < np.max(w_curve) * curve_thresh] = 0.0
+
+                    w_curve[w_curve < -99999999.0] = 0.0
+                    w_curve[w_curve > 99999999.0] = 0.0
+
+                    w_curve[w_curve > 0.0] = 1.0
+
+                    # Note:  This assumes that the w_curve window is the specified size,
+                    # which is not always the case for edge reaches:
+                    # arr_bankpts[
+                    #   row_min + buff:row_max - buff, col_min + buff:col_max - buff
+                    #   ] = w_curve[buff:w_height - buff, buff:w_width - buff]
+                    arr_bankpts[
+                        row_min + buff : row_max - buff, col_min + buff : col_max - buff
+                    ] = w_curve[buff : w_height - buff, buff : w_width - buff]
+
+                    out_meta["nodata"] = 0.0
+
+            logger.info("Writing bank pixels .tif:")
+            with rasterio.open(bank_pixels, "w", **out_meta) as dest:
+                dest.write(arr_bankpts.astype(rasterio.uint8), indexes=1)
+
+    except Exception as e:
+        logger.info(
+            "\r\nError in bankpixels_from_curvature_window. Exception: {} \n".format(e)
+        )
+
+    return
+
+
 def channel_width_from_bank_pixels(
     df_coords,
-    str_streamlines_path,
-    str_bankpixels_path,
-    str_reachid,
+    network_poly,
+    bank_pixels,
     i_step,
     max_buff,
     str_chanmet_segs,
@@ -61,9 +224,8 @@ def channel_width_from_bank_pixels(
 
     Args:
         df_coords:
-        str_streamlines_path:
-        str_bankpixels_path:
-        str_reachid:
+        network_poly:
+        bank_pixels:
         i_step:
         max_buff:
         str_chanmet_segs:
@@ -94,11 +256,11 @@ def channel_width_from_bank_pixels(
 
     # Access the bank pixel layer:
     # open with share=False for multithreading
-    with rasterio.open(str(str_bankpixels_path)) as ds_bankpixels:
+    with rasterio.open(bank_pixels) as ds_bankpixels:
         # Successive buffer-mask operations to count bank pixels at certain intervals
         lst_buff = range(int(ds_bankpixels.res[0]), max_buff, int(ds_bankpixels.res[0]))
         # Access the streamlines layer:
-        with fiona.open(str(str_streamlines_path), "r") as streamlines:
+        with fiona.open(network_poly, "r") as streamlines:
             # Get the crs:
             streamlines_crs = streamlines.crs
             # Open another file to write the output props:
@@ -222,8 +384,8 @@ def channel_width_from_bank_pixels(
                                 .itertuples()
                             ):
                                 weighted_avg_left += tpl.buffer * (
-                                    np.float(tpl.interval_left)
-                                    / np.float(
+                                    float(tpl.interval_left)
+                                    / float(
                                         df_tally.nlargest(n_top, "interval_left")
                                         .iloc[0:2]
                                         .sum()
@@ -243,8 +405,8 @@ def channel_width_from_bank_pixels(
                                 .itertuples()
                             ):
                                 weighted_avg_rt += tpl.buffer * (
-                                    np.float(tpl.interval_rt)
-                                    / np.float(
+                                    float(tpl.interval_rt)
+                                    / float(
                                         df_tally.nlargest(n_top, "interval_rt")
                                         .iloc[0:2]
                                         .sum()
@@ -277,154 +439,32 @@ def channel_width_from_bank_pixels(
     return
 
 
-def bankpixels_from_curvature_window(
-    df_coords, str_dem_path, str_bankpixels_path, cell_size, use_wavelet_method, logger
-):
-    """
-    Searchable window with center pixel defined by get_stream_coords_from_features
+def derive(xn_coordinates, dem, bank_pixels, cell_size, wavelet_parameters, network_poly, channel_segs, logger):
 
-    Args:
-        df_coords:
-        str_dem_path:
-        str_bankpixels_path:
-        cell_size:
-        use_wavelet_method:
-        logger:
+    df_coords = pd.read_csv(xn_coordinates)
 
-    Returns:
-    """
-    logger.info("Bank pixels from curvature windows:")
+    win_height, win_width, buffer, curve_threshold, minimum_window_size, method, i_step, max_buff = wavelet_parameters.values()
 
-    # Convert df_coords x-y to row-col via DEM affine
-    # Loop over center row-col pairs accessing the window
-    # Now loop over the linknos to get access grid by window:
+    bankpixels_from_curvature_window(
+        df_coords,
+        cell_size, 
+        win_height, 
+        win_width, 
+        buffer, 
+        curve_threshold, 
+        minimum_window_size,
+        dem,
+        method,
+        bank_pixels,
+        logger
+    )
 
-    # << PARAMETERS >>
-    cell_size = int(cell_size)
-
-    # 3 m:
-    w_height = 20  # number of rows
-    w_width = 20  # number of columns
-    buff = 3  # number of cells
-    curve_thresh = 0.30  # good for 3m DEM
-
-    j = 0
-
-    try:
-        # select the scale sigma=1
-        sigma = 1.0
-        g2x1, g2y1 = gauss_kern(sigma)
-
-        with rasterio.open(str_dem_path) as ds_dem:
-
-            # Transform to pixel space
-            df_coords["col"], df_coords["row"] = ~ds_dem.transform * (
-                df_coords["x"],
-                df_coords["y"],
-            )
-            df_coords[["row", "col"]] = df_coords[["row", "col"]].astype(np.int32)
-            df_coords.drop_duplicates(
-                ["col", "row"], inplace=True
-            )  # rounding to integer
-            # total_len = len(df_coords.index)
-
-            out_meta = ds_dem.meta.copy()
-            # no need for float32 for bankpixels to save size of output
-            out_meta["dtype"] = rasterio.uint8
-            out_meta["compress"] = "lzw"
-
-            arr_bankpts = np.zeros(
-                [out_meta["height"], out_meta["width"]], dtype=out_meta["dtype"]
-            )
-
-            for tpl_row in df_coords.itertuples():
-
-                if tpl_row.order == 5:
-                    w_height = 40  # number of rows
-                    w_width = 40  # number of columns
-                if tpl_row.order >= 6:
-                    w_height = 80
-                    w_width = 80
-
-                j += 1
-
-                # logger.info('{} | {} -- {}'.format(tpl_row.linkno, j, total_len))
-
-                row_min = np.int(tpl_row.row - np.int(w_height / 2))
-                row_max = np.int(tpl_row.row + np.int(w_height / 2))
-                col_min = np.int(tpl_row.col - np.int(w_width / 2))
-                col_max = np.int(tpl_row.col + np.int(w_width / 2))
-
-                # Now get the DEM specified by this window as a numpy array:
-                w = ds_dem.read(1, window=((row_min, row_max), (col_min, col_max)))
-
-                # Then extract the internal part of the window that contains the rotated window
-                w[
-                    w > 9999999.0
-                ] = 0.0  # NoData values may have been corrupted by preprocessing
-                w[w < -9999999.0] = 0.0
-
-                # make sure a window of appropriate size was returned from the DEM
-                if np.size(w) > 9:
-
-                    if use_wavelet_method:
-                        # === Wavelet Curvature from Chandana ===
-                        gradfx1 = signal.convolve2d(
-                            w, g2x1, boundary="symm", mode="same"
-                        )
-                        gradfy1 = signal.convolve2d(
-                            w, g2y1, boundary="symm", mode="same"
-                        )
-
-                        w_curve = gradfx1 + gradfy1
-
-                        # Pick out bankpts:
-                        w_curve[w_curve < np.max(w_curve) * curve_thresh] = 0.0
-
-                    else:
-                        # Mean Curvature:
-                        Zy, Zx = np.gradient(w, cell_size)
-                        Zxy, Zxx = np.gradient(Zx, cell_size)
-                        Zyy, _ = np.gradient(Zy, cell_size)
-
-                        try:
-                            w_curve = (
-                                (Zx**2 + 1) * Zyy
-                                - 2 * Zx * Zy * Zxy
-                                + (Zy**2 + 1) * Zxx
-                            )
-                            w_curve = -w_curve / (2 * (Zx**2 + Zy**2 + 1) ** (1.5))
-                        except:
-                            logger.info(
-                                "Error calculating Curvature in window:skipping"
-                            )
-                            continue
-
-                        w_curve[w_curve < np.max(w_curve) * curve_thresh] = 0.0
-
-                    w_curve[w_curve < -99999999.0] = 0.0
-                    w_curve[w_curve > 99999999.0] = 0.0
-
-                    w_curve[w_curve > 0.0] = 1.0
-
-                    # Note:  This assumes that the w_curve window is the specified size,
-                    # which is not always the case for edge reaches:
-                    # arr_bankpts[
-                    #   row_min + buff:row_max - buff, col_min + buff:col_max - buff
-                    #   ] = w_curve[buff:w_height - buff, buff:w_width - buff]
-                    arr_bankpts[
-                        row_min + buff : row_max - buff, col_min + buff : col_max - buff
-                    ] = w_curve[buff : w_height - buff, buff : w_width - buff]
-
-                    out_meta["nodata"] = 0.0
-
-            logger.info("Writing bank pixels .tif:")
-            with rasterio.open(str_bankpixels_path, "w", **out_meta) as dest:
-                dest.write(arr_bankpts.astype(rasterio.uint8), indexes=1)
-
-    except Exception as e:
-        logger.info(
-            "\r\nError in bankpixels_from_curvature_window. Exception: {} \n".format(e)
-        )
-
-    return
+    channel_width_from_bank_pixels(
+        df_coords,
+        network_poly,
+        bank_pixels,
+        i_step,
+        max_buff,
+        channel_segs,
+        logger,
+    )

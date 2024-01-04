@@ -90,6 +90,12 @@ if __name__ == "__main__":
         cross_sections.generate(Config, Paths, cell_size=1)
         channel_metrics.derive(Paths.channel_xns, Paths.dem, Paths.bank_points, Config.methods['cross_section'], Config.spatial_ref['epsg'], logger)
 
+        # Channel Curvature Metrics
+        curvature_metrics.derive(
+            Paths.xn_coordinates, Paths.dem, Paths.bank_pixels, 
+            Config.spatial_ref['cell_size'], Config.methods['curvature'], Paths.network_poly, 
+            Paths.channel_segs, logger
+            )
         stop = timer() - start
         print(f"{timer() - start} seconds")
 

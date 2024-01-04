@@ -34,6 +34,7 @@ xn_coordinates = "xn_coordinates.csv"
 channel_xns = "channel_xns.shp" # _channel_xns.shp
 bank_points = "bank_points.shp" # bankpoints_1D_metrics.shp
 bank_pixels = "bank_pixels.tif" # _bankpixels.tif
+channel_segs = "channel_segs.shp"
 flood_extent_layer = "floodplain.tif" # _floodplain.tif
 flood_height_thresholds = "flood_height_thresholds.csv" # _floodplain_hand_height.csv
 floodplain_xns = "floodplain_xns.shp" # _floodplain_xns_1D_metrics.shp
