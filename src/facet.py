@@ -26,6 +26,8 @@ from utils.batch import generate_processing_batch
 from preprocessing import preprocess, cross_sections, network_smoothing
 from metrics import channel_cross_section_metrics as channel_metrics 
 from metrics import channel_curvature_metrics as curvature_metrics
+from metrics import flood_inundation_map as fim
+
 
 # from src.utils import parse_toml, utils
 # from src.utils.batch import generate_processing_batch
@@ -97,6 +99,15 @@ if __name__ == "__main__":
             Config.spatial_ref['cell_size'], Config.methods['curvature'], Paths.network_poly, 
             Paths.channel_segs, logger
             )
+
+        # delineate flood inundation layer
+        reach_id = Config.preprocess['reach-order']['reach_id']
+        min_da, max_da = Config.methods['flood_thresholds'].values()
+        fim.delineate(
+            Paths.hand, Paths.sub_watersheds_poly, Config.preprocess['reach-order']['reach_id'],
+            Paths.flood_extent_layer, Paths.flood_height_thresholds, min_da, max_da, logger
+            )
+
         stop = timer() - start
         print(f"{timer() - start} seconds")
 

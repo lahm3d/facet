@@ -90,6 +90,11 @@ preprocess = true
     i_step = 100
     max_buff = 30
 
+    [methods.flood_thresholds]
+    # units sq kilometers
+    min_drainage_area = 3
+    max_drainage_area = 3000
+
 [postprocess]
 post-process = true
 stream-buffer = 60
