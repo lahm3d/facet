@@ -550,32 +550,31 @@ def join_watershed_attrs(w: str, physio: str, net: str, output: str, logger) -> 
     logger.info("Stream and Physio attributes successfully joined to Catchments")
 
 
-def rasterize_gdf(str_net_path: str, str_ingrid_path: str, str_tempgrid: str) -> None:
+def rasterize(vector_file: Path, ref_raster: Path, raster_file: Path, ID: str) -> None:
     """
     Rasterizes a geodataframe based on a template raster
     Args:
-        str_net_path: Path to the vector file to rasterize
-        str_ingrid_path: Path to the template raster
-        str_tempgrid: Path to the output raster
+        vector_file: Path to the vector file to rasterize
+        ref_raster: Path to the template raster
+        raster_file: Path to the output raster
 
     Returns: None, writes the rasterized file to disk
 
     Thanks to:
     https://gis.stackexchange.com/questions/151339/rasterize-a-shapefile-with-geopandas-or-fiona-python
     """
-    gdf = gpd.read_file(str(str_net_path))
+    gdf = gpd.read_file(vector_file)
 
-    with rasterio.open(str_ingrid_path) as rst:
+    with rasterio.open(ref_raster) as rst:
         meta = rst.meta.copy()
     meta.update(compress="lzw")
     meta.update(dtype=rasterio.int32)
     meta.update(nodata=0)
 
-    # TODO: Remove hardcoded LINKNO reference
-    with rasterio.open(str_tempgrid, "w+", **meta) as out:
+    with rasterio.open(raster_file, "w+", **meta) as out:
         out_arr = out.read(1)
         # this is where we create a generator of geom, value pairs to use in rasterizing
-        shapes = ((geom, value) for geom, value in zip(gdf.geometry, gdf["LINKNO"]))
+        shapes = ((geom, value) for geom, value in zip(gdf.geometry, gdf[ID]))
         arr_burned = rasterio.features.rasterize(
             shapes=shapes, fill=0, out=out_arr, transform=out.transform
         )
