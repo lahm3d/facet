@@ -27,12 +27,17 @@ from preprocessing import preprocess, cross_sections, network_smoothing
 from metrics import channel_cross_section_metrics as channel_metrics 
 from metrics import channel_curvature_metrics as curvature_metrics
 from metrics import flood_inundation_map as fim
+from metrics import floodplain_metrics
 
 
+# debug
 # from src.utils import parse_toml, utils
 # from src.utils.batch import generate_processing_batch
-# from src.preprocessing import preprocess, cross_sections
+# from src.preprocessing import preprocess, cross_sections, network_smoothing
 # from src.metrics import channel_cross_section_metrics as channel_metrics 
+# from src.metrics import channel_curvature_metrics as curvature_metrics 
+# from src.metrics import flood_inundation_map as fim
+# from src.metrics import floodplain_metrics
 
 # import pandas as pd
 # from configure import config
@@ -91,6 +96,8 @@ if __name__ == "__main__":
         # Paths.network_poly = smooth_network
 
         cross_sections.generate(Config, Paths, cell_size=1)
+        
+        # 1D Channel Cross-section Metrics
         channel_metrics.derive(Paths.channel_xns, Paths.dem, Paths.bank_points, Config.methods['cross_section'], Config.spatial_ref['epsg'], logger)
 
         # Channel Curvature Metrics
@@ -108,6 +115,19 @@ if __name__ == "__main__":
             Paths.flood_extent_layer, Paths.flood_height_thresholds, min_da, max_da, logger
             )
 
+        # 1D Floodplain Cross-section Metrics
+        floodplain_metrics.derive(
+            Paths.floodplain_xns, Paths.flood_extent_layer, Paths.dem, 
+            "ch_wid_tot", Paths.channel_segs, Config.xn_lengths["floodplain"], 
+            logger
+        )
+
+        # Experimental HAND method
+        floodplain_metrics.hand_method(
+            Paths.hand, Paths.channel_segs, Paths.network_poly, Paths.network_rast, 
+            Paths.flood_extent_layer, Paths.dem, Config.xn_lengths["floodplain"], 
+            logger
+        )
+
         stop = timer() - start
         print(f"{timer() - start} seconds")
-
