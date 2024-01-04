@@ -83,10 +83,10 @@ def bankpixels_from_curvature_window(
     # cell_size = int(cell_size)
 
     # # 3 m:
-    # w_height = 20  # number of rows
-    # w_width = 20  # number of columns
-    # buff = 3  # number of cells
-    # curve_thresh = 0.30  # good for 3m DEM
+    # win_height = 20  # number of rows
+    # win_width = 20  # number of columns
+    # buffer = 3  # number of cells
+    # curve_threshold = 0.30  # good for 3m DEM
 
     j = 0
 
@@ -120,20 +120,20 @@ def bankpixels_from_curvature_window(
             for tpl_row in df_coords.itertuples():
 
                 if tpl_row.order == 5:
-                    w_height = 40  # number of rows
-                    w_width = 40  # number of columns
+                    win_height = 40  # number of rows
+                    win_width = 40  # number of columns
                 if tpl_row.order >= 6:
-                    w_height = 80
-                    w_width = 80
+                    win_height = 80
+                    win_width = 80
 
                 j += 1
 
                 # logger.info('{} | {} -- {}'.format(tpl_row.linkno, j, total_len))
 
-                row_min = int(tpl_row.row - int(w_height / 2))
-                row_max = int(tpl_row.row + int(w_height / 2))
-                col_min = int(tpl_row.col - int(w_width / 2))
-                col_max = int(tpl_row.col + int(w_width / 2))
+                row_min = int(tpl_row.row - int(win_height / 2))
+                row_max = int(tpl_row.row + int(win_height / 2))
+                col_min = int(tpl_row.col - int(win_width / 2))
+                col_max = int(tpl_row.col + int(win_width / 2))
 
                 # Now get the DEM specified by this window as a numpy array:
                 w = ds_dem.read(1, window=((row_min, row_max), (col_min, col_max)))
@@ -145,7 +145,7 @@ def bankpixels_from_curvature_window(
                 w[w < -9999999.0] = 0.0
 
                 # make sure a window of appropriate size was returned from the DEM
-                if np.size(w) > 9:
+                if np.size(w) > minimum_window_size:
 
                     if method == 'wavelet':
                         # === Wavelet Curvature from Chandana ===
@@ -159,7 +159,7 @@ def bankpixels_from_curvature_window(
                         w_curve = gradfx1 + gradfy1
 
                         # Pick out bankpts:
-                        w_curve[w_curve < np.max(w_curve) * curve_thresh] = 0.0
+                        w_curve[w_curve < np.max(w_curve) * curve_threshold] = 0.0
 
                     elif method == 'mean':
                         # Mean Curvature:
@@ -180,7 +180,7 @@ def bankpixels_from_curvature_window(
                             )
                             continue
 
-                        w_curve[w_curve < np.max(w_curve) * curve_thresh] = 0.0
+                        w_curve[w_curve < np.max(w_curve) * curve_threshold] = 0.0
 
                     w_curve[w_curve < -99999999.0] = 0.0
                     w_curve[w_curve > 99999999.0] = 0.0
@@ -190,11 +190,11 @@ def bankpixels_from_curvature_window(
                     # Note:  This assumes that the w_curve window is the specified size,
                     # which is not always the case for edge reaches:
                     # arr_bankpts[
-                    #   row_min + buff:row_max - buff, col_min + buff:col_max - buff
-                    #   ] = w_curve[buff:w_height - buff, buff:w_width - buff]
+                    #   row_min + buffer:row_max - buffer, col_min + buffer:col_max - buffer
+                    #   ] = w_curve[buffer:win_height - buffer, buffer:win_width - buffer]
                     arr_bankpts[
-                        row_min + buff : row_max - buff, col_min + buff : col_max - buff
-                    ] = w_curve[buff : w_height - buff, buff : w_width - buff]
+                        row_min + buffer : row_max - buffer, col_min + buffer : col_max - buffer
+                    ] = w_curve[buffer : win_height - buffer, buffer : win_width - buffer]
 
                     out_meta["nodata"] = 0.0
 
@@ -265,7 +265,7 @@ def channel_width_from_bank_pixels(
             streamlines_crs = streamlines.crs
             # Open another file to write the output props:
             with fiona.open(
-                str(str_chanmet_segs),
+                str_chanmet_segs,
                 "w",
                 "ESRI Shapefile",
                 schema_output,
@@ -444,6 +444,7 @@ def derive(xn_coordinates, dem, bank_pixels, cell_size, wavelet_parameters, netw
     df_coords = pd.read_csv(xn_coordinates)
 
     win_height, win_width, buffer, curve_threshold, minimum_window_size, method, i_step, max_buff = wavelet_parameters.values()
+    # print(win_height, win_width)
 
     bankpixels_from_curvature_window(
         df_coords,
