@@ -19,7 +19,7 @@ Install conda environment
 
         conda env create -f environment.yml
 
-Download sample data: `https://gis-data.chesapeakebay.net/facet_misc_data/draft.zip`
+### Download sample data: `https://gis-data.chesapeakebay.net/facet_misc_data/draft.zip`
 
 Navigate to `facet/src/config.toml` and edit the following values:
 
