@@ -24,11 +24,10 @@ from pathlib import Path
 from utils import parse_toml, utils
 from utils.batch import generate_processing_batch
 from preprocessing import preprocess, cross_sections, network_smoothing
-from metrics import channel_cross_section_metrics as channel_metrics 
+from metrics import channel_cross_section_metrics as channel_metrics
 from metrics import channel_curvature_metrics as curvature_metrics
 from metrics import flood_inundation_map as fim
 from metrics import floodplain_metrics
-
 
 # debug
 # from src.utils import parse_toml, utils
@@ -39,17 +38,6 @@ from metrics import floodplain_metrics
 # from src.metrics import flood_inundation_map as fim
 # from src.metrics import floodplain_metrics
 
-# import pandas as pd
-# from configure import config
-# from post_processing import post_process
-# import preprocessing
-# import utils.utils as utils
-
-# from metrics import (
-#     channel_cross_section_metrics,
-#     floodplain_metrics,
-#     channel_curvature_metrics,
-# )
 
 # Debug WBT compile issue only on WSL Ubuntu 20.0
 # whitebox.download_wbt(linux_musl=True, reset=True)
@@ -57,8 +45,7 @@ from metrics import floodplain_metrics
 
 if __name__ == "__main__":
 
-
-    config_toml = Path("src/config_test.toml")
+    config_toml = Path("src/config.toml")
     fpaths_toml = Path("src/utils/filepaths.toml")
 
     # step 1
@@ -80,7 +67,7 @@ if __name__ == "__main__":
         # Paths_dict = parse_toml.class_to_dict(Paths)
         # for k,v in Paths_dict.items():
         #     print(v)
-        
+
         # start HUC processing time
         start = timer()
 
@@ -96,14 +83,17 @@ if __name__ == "__main__":
         # Paths.network_poly = smooth_network
 
         cross_sections.generate(Config, Paths, cell_size=1)
-        
+
         # 1D Channel Cross-section Metrics
-        channel_metrics.derive(Paths.channel_xns, Paths.dem, Paths.bank_points, Config.methods['cross_section'], Config.spatial_ref['epsg'], logger)
+        channel_metrics.derive(
+            Paths.channel_xns, Paths.dem, Paths.bank_points,
+            Config.methods['cross_section'], Config.spatial_ref['epsg'], logger
+            )
 
         # Channel Curvature Metrics
         curvature_metrics.derive(
             Paths.xn_coordinates, Paths.dem, Paths.bank_pixels, 
-            Config.spatial_ref['cell_size'], Config.methods['curvature'], Paths.network_poly, 
+            Config.spatial_ref['cell_size'], Config.methods['curvature'], Paths.network_poly,
             Paths.channel_segs, logger
             )
 
@@ -111,22 +101,29 @@ if __name__ == "__main__":
         reach_id = Config.preprocess['reach-order']['reach_id']
         min_da, max_da = Config.methods['flood_thresholds'].values()
         fim.delineate(
-            Paths.hand, Paths.sub_watersheds_poly, Config.preprocess['reach-order']['reach_id'],
-            Paths.flood_extent_layer, Paths.flood_height_thresholds, min_da, max_da, logger
+            Paths.hand,
+            Paths.sub_watersheds_poly,
+            Config.preprocess['reach-order']['reach_id'],
+            Paths.flood_extent_layer,
+            Paths.flood_height_thresholds,
+            min_da,
+            max_da,
+            logger
             )
 
         # 1D Floodplain Cross-section Metrics
         floodplain_metrics.derive(
-            Paths.floodplain_xns, Paths.flood_extent_layer, Paths.dem, 
-            "ch_wid_tot", Paths.channel_segs, Config.xn_lengths["floodplain"], 
+            Paths.floodplain_xns, Paths.flood_extent_layer,
+            Paths.dem, "ch_wid_tot",
+            Paths.channel_segs, Config.xn_lengths["floodplain"],
             logger
         )
 
         # Experimental HAND method
         floodplain_metrics.hand_method(
-            Paths.hand, Paths.channel_segs, Paths.network_poly, Paths.network_rast, 
-            Paths.flood_extent_layer, Paths.dem, Config.xn_lengths["floodplain"], 
-            logger
+            Paths.hand, Paths.channel_segs, Paths.network_poly,
+            Paths.network_rast, Paths.flood_extent_layer, Paths.dem,
+            Config.xn_lengths["floodplain"], logger
         )
 
         stop = timer() - start
