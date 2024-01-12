@@ -7,10 +7,10 @@ import sys
 from timeit import default_timer as timer
 import itertools
 import subprocess
+from osgeo import gdal
 
 import numpy as np
 from rasterio.io import MemoryFile
-from osgeo import gdal
 import rasterio
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.features import shapes
