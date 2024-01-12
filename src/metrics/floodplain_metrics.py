@@ -1,3 +1,4 @@
+from osgeo import gdal
 import rasterio
 import rasterio.mask
 import geopandas as gpd

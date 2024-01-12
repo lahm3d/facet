@@ -10,6 +10,7 @@ import subprocess
 
 import numpy as np
 from rasterio.io import MemoryFile
+from osgeo import gdal
 import rasterio
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.features import shapes

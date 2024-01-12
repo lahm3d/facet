@@ -4,6 +4,7 @@ import whitebox
 import geopandas as gpd
 import pandas as pd
 import fiona
+from osgeo import gdal
 import rasterio
 from rasterio.warp import transform
 from rasterio.features import shapes

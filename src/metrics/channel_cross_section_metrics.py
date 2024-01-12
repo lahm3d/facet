@@ -1,6 +1,7 @@
 from math import ceil, atan
 
 import numpy as np
+from osgeo import gdal
 import rasterio
 import fiona
 from fiona.crs import CRS

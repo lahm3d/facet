@@ -1,9 +1,11 @@
+from osgeo import gdal
 import rasterio
 import numpy as np
 import fiona
 from shapely.geometry import LineString, mapping
 import pandas as pd
 from scipy import signal
+
 
 def gauss_kern(sigma):
     """
