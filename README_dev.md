@@ -15,9 +15,18 @@ Install miniconda3 or anaconda: https://docs.conda.io/projects/miniconda/en/late
 
         cd c:/folder-where-you-cloned-or-unzipped-facet-repo
 
+There are two options to install taudem:
+
+Try option #1 once or twice, if that fails then simply follow option #2. There seems to be gdal version mismatch issues between taudem and other geospatial libs.
+
+Option #1: Go to `environment.yml` and un-comment `taudem=5.8.3`. Skip to install conda environment section.
+
+Option #2: Download and install [TauDEM](http://hydrology.usu.edu/taudem/taudem5/downloads.html) version 5.3.7, including the TauDEM dependencies.
+
 Install conda environment
 
         conda env create -f environment.yml
+
 
 ### Download sample data: `https://gis-data.chesapeakebay.net/facet_misc_data/draft.zip`
 
