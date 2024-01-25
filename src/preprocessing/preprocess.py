@@ -11,10 +11,12 @@ from rasterio.features import shapes
 from shapely.geometry import shape
 import subprocess
 import numpy as np
+import fsspec
 
 def clip_flowlines(flowlines, mask, output):
 
-    aoi_flowlines = gpd.read_parquet(flowlines)
+    with fsspec.open(flowlines) as parquet:
+        aoi_flowlines = gpd.read_parquet(parquet)
     mask = gpd.read_file(mask)
     flowlines = aoi_flowlines.clip(mask)
 
@@ -30,8 +32,11 @@ def clip_flowlines(flowlines, mask, output):
 
 def merge_rails_and_roads(aoi_rails, aoi_roads, mask, output):
 
-    roads = gpd.read_parquet(aoi_roads)
-    rails = gpd.read_parquet(aoi_rails)
+    with fsspec.open(aoi_roads) as parquet:
+        roads = gpd.read_parquet(parquet)
+
+    with fsspec.open(aoi_rails) as parquet:
+        rails = gpd.read_parquet(parquet)
 
     mask = gpd.read_file(mask)
 
@@ -192,7 +197,10 @@ def polygonize_subwatershed_and_append_attributes(Config, Paths):
     watershed_points = sub_watersheds.copy()
     watershed_points.geometry = watershed_points.geometry.centroid
     # 3 - spatial join points to physiographic regions
-    physiography = gpd.read_parquet(Config.ancillary['physiography'])
+
+    with fsspec.open(Config.ancillary['physiography']) as parquet:
+        physiography = gpd.read_parquet(parquet)
+
     physio_in_watersheds = gpd.sjoin(watershed_points, physiography, how='left')  # spatial join
     physio_in_watersheds = physio_in_watersheds[['LINKNO', 'PROVINCE']]
 

@@ -4,6 +4,7 @@ channels:
   - defaults
 dependencies:
   - geopandas
+  - fsspec
   - numpy
   - pandas
   - pyarrow
