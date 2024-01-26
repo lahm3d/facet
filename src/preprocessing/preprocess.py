@@ -5,6 +5,7 @@ import geopandas as gpd
 import pandas as pd
 import fiona
 from osgeo import gdal
+from osgeo_utils.gdal_polygonize import gdal_polygonize
 import rasterio
 from rasterio.warp import transform
 from rasterio.features import shapes
@@ -188,7 +189,13 @@ def delineate_elevation_aligned_stream_network(Config, Paths):
 
 def polygonize_subwatershed_and_append_attributes(Config, Paths):
 
-    run_command(f'gdal_polygonize.py -8 "{Paths.sub_watersheds_rast}" "{Paths.sub_watersheds_poly}"')
+    # run_command(f'gdal_polygonize.py -8 "{Paths.sub_watersheds_rast}" "{Paths.sub_watersheds_poly}"')
+    gdal_polygonize(
+        str(Paths.sub_watersheds_rast),
+        1,
+        str(Paths.sub_watersheds_poly),
+        connectedness8=True
+    )
 
     # 1 - read in watershed polygons
     sub_watersheds = gpd.read_file(Paths.sub_watersheds_poly)
