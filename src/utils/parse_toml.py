@@ -53,20 +53,21 @@ class CreateFilepaths:
             ]
         for key, value in paths.items():
             stem, suffix = value.split('.')
+
             if stem in inputs:
-                parent = Path(self.folder) / f"huc_{self.huc}"
+                parent = Path(self.folder) / self.huc
                 basename = f"{self.huc}_{stem}.{suffix}"
             else:
                 if self.version == "":
-                    parent = Path(self.folder) / f"huc_{self.huc}"
+                    parent = Path(self.folder) / self.huc
                     basename = f"{self.huc}_{stem}.{suffix}"
                 else:
-                    parent = Path(self.folder) / f"huc_{self.huc}" / self.version
+                    parent = Path(self.folder) / self.huc / self.version
                     basename = f"{self.huc}_{stem}_{self.version}.{suffix}"
             fpath = parent / basename         
             setattr(self, key, fpath)
         # add parent folder 
-        setattr(self, "parent", Path(self.folder) / f"huc_{self.huc}")
+        setattr(self, "parent", Path(self.folder) / self.huc)
 
 
     def __repr__(self):
