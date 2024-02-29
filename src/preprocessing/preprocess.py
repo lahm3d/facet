@@ -7,6 +7,7 @@ import fiona
 from osgeo import gdal
 from osgeo_utils.gdal_polygonize import gdal_polygonize
 import rasterio
+from shapely.geometry import Point
 import subprocess
 import numpy as np
 from utils import utils
@@ -93,8 +94,8 @@ def hydro_condition_dem(Config, Paths, logger):
 
 
 def create_weight_grid_from_streamlines(
-    flowlines, dem, initiation_pixels
-):
+    flowlines, watershed, dem, initiation_pixels
+, logger):
     """
     Create weight file for TauDEM D8 FAC
 
@@ -105,60 +106,50 @@ def create_weight_grid_from_streamlines(
 
     Returns:
     """
+    if not initiation_pixels.is_file():
+        flowlines = gpd.read_file(flowlines)
+        mask = utils.vector_to_geodataframe(watershed)
 
-    lst_coords = []
-    lst_pts = []
-    lst_x = []
-    lst_y = []
+        mask['geometry'] = mask.geometry.buffer(-0.2)
+        clip = gpd.clip(flowlines, mask)
 
-    with fiona.open(flowlines) as lines:
+        end_nodes = []
+        start_nodes= []
 
-        streamlines_crs = lines.crs  # to use in the output grid
+        for line in clip['geometry']:
+            end_nodes.append(tuple(np.array(line.coords)[-1][:2]))
+            start_nodes.append(tuple(np.array(line.coords)[0][:2]))
 
-        # Get separate lists of start and end points:
-        for line in lines:
-            if line["geometry"]["type"] == "LineString":  # Make sure it's a LineString
-                # Add endpts:
-                lst_coords.append(line["geometry"]["coordinates"][-1])
-                # Add startpts:
-                lst_pts.append(line["geometry"]["coordinates"][0])
+        intersecting_nodes = set(start_nodes).intersection(set(end_nodes))
 
-        # If a start point is not also in the endpt list, it's first order:
-        for pt in lst_pts:
-            if pt not in lst_coords:
-                lst_x.append(pt[0])
-                lst_y.append(pt[1])
+        init_nodes_geoms = []
+        for node in start_nodes + end_nodes:
+            if node not in intersecting_nodes:
+                init_nodes_geoms.append(Point(node))
+        init_nodes = gpd.GeoDataFrame(geometry=init_nodes_geoms, crs=flowlines.crs)
 
-    # Open DEM to copy metadata and write a Weight Grid (WG):
-    with rasterio.open(dem) as ds_dem:
-        out_meta = ds_dem.meta.copy()
-        out_meta.update(compress="lzw")
-        out_meta.update(dtype=rasterio.int16)
-        out_meta.update(nodata=-9999)
-        # out_meta.update(crs=lines.crs)  # shouldn't be necessary
+        # Open DEM to copy metadata and write a Weight Grid (WG):
+        with rasterio.open(dem) as src_dem:
+            out_meta = src_dem.meta.copy()
+            out_meta.update(compress="lzw")
+            out_meta.update(dtype=rasterio.int16)
+            out_meta.update(nodata=-9999)
 
-        # Construct the output array:
-        arr_danglepts = np.zeros(
-            [out_meta["height"], out_meta["width"]], dtype=out_meta["dtype"]
-        )
+            with rasterio.open(initiation_pixels, "w+", **out_meta) as dst:
+                array = dst.read(1)
+                shapes = init_nodes['geometry'].values
 
-        tpl_pts = transform(streamlines_crs, out_meta["crs"], lst_x, lst_y)
-        lst_dangles = zip(tpl_pts[0], tpl_pts[1])
+                init_array = rasterio.features.rasterize(
+                    shapes=shapes, default_value=1, fill=0, out=array, transform=src_dem.transform,
+                    # all_touched=True
+                )
 
-        for coords in lst_dangles:
-            # BUT you have to convert coordinates from hires to dem
-            col, row = ~ds_dem.transform * (coords[0], coords[1])
-            try:
-                arr_danglepts[int(row), int(col)] = 1
-            except:
-                continue
+                init_array[init_array == -9999] = 0
 
-    # Now write the new grid using this metadata:
-    with rasterio.open(initiation_pixels, "w", **out_meta) as dest:
-        dest.write(arr_danglepts, indexes=1)
+                dst.write_band(1, init_array)
+                logger.info("Channel initiation nodes generated")
 
 
-def delineate_elevation_aligned_stream_network(Config, Paths):
 
     num_cores = Config.preprocess['taudem']['cores']
 
@@ -269,3 +260,4 @@ def run_preprocessing_steps(Config, Paths):
 def run_preprocessing_steps(Config, Paths, logger):
     clip_flowlines(Config.ancillary['flowlines'], Paths.watershed, Paths.flowlines, logger)
     hydro_condition_dem(Config, Paths, logger)
+    create_weight_grid_from_streamlines(Paths.flowlines, Paths.watershed, Paths.dem, Paths.initiation_pixels, logger)
