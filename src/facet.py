@@ -114,7 +114,7 @@ if __name__ == "__main__":
         # 1D Floodplain Cross-section Metrics
         floodplain_metrics.derive(
             Paths.floodplain_xns, Paths.flood_extent_layer,
-            Paths.dem, "ch_wid_tot",
+            Paths.dem, "CURVE_WD",
             Paths.channel_segs, Config.xn_lengths["floodplain"],
             logger
         )

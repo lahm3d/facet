@@ -431,9 +431,9 @@ def analyze_xnelev(
     this_linkno
     tpl_bankfullpts[3] + np.min(tpl_row.elev)
     tpl_bankangles
-    bf_area
+    CA_1D
     ch_width
-    overbank_ratio
+    OBR_1D
     total_arearatio
 
     """
@@ -442,7 +442,7 @@ def analyze_xnelev(
     try:
         for tpl_row in df_xn_elev.itertuples():
 
-            this_linkno = tpl_row.linkno
+            this_linkno = tpl_row.LINKNO
             # this_order = tpl_row.strmord
 
             # A list to store the total number of indices/blocks in a Xn:
@@ -539,33 +539,33 @@ def analyze_xnelev(
                     # Estimate bankfull area:
                     # (Bank height - xn_elev_norm[i])*xn_ptdist
                     # Round up on left, round down on right
-                    bf_area = 0
+                    CA_1D = 0
                     lst_bf_rng = range(
                         int(ceil(tpl_bankfullpts[1])), int(tpl_bankfullpts[2]) + 1, 1
                     )
 
                     for i in lst_bf_rng:
-                        bf_area += (tpl_bankfullpts[3] - thisxn_norm[i]) * xn_ptdist
+                        CA_1D += (tpl_bankfullpts[3] - thisxn_norm[i]) * xn_ptdist
 
                     # Channel width:
                     ch_width = (tpl_bankfullpts[2] - tpl_bankfullpts[1]) * xn_ptdist
 
                     # Overbank ratio:
                     try:
-                        overbank_ratio = len(lst_total_cnt[-1]) / (
+                        OBR_1D = len(lst_total_cnt[-1]) / (
                             tpl_bankfullpts[2] - tpl_bankfullpts[1]
                         )
                     except:
-                        overbank_ratio = -9999.0
+                        OBR_1D = -9999.0
 
-                    if bf_area == 0:
-                        bf_area = -9999.0
+                    if CA_1D == 0:
+                        CA_1D = -9999.0
                         total_arearatio = -9999.0
                     else:
                         # Also try area under entire Xn length relative to BF area:
                         total_xn_area = sum(thisxn_norm * xn_ptdist)
                         try:
-                            total_arearatio = (total_xn_area - bf_area) / bf_area
+                            total_arearatio = (total_xn_area - CA_1D) / CA_1D
                         except:
                             total_arearatio = -9999.0
 
@@ -575,9 +575,9 @@ def analyze_xnelev(
                         + (this_linkno,)
                         + (tpl_bankfullpts[3] + np.min(tpl_row.elev),)
                         + tpl_bankangles
-                        + (bf_area,)
+                        + (CA_1D,)
                         + (ch_width,)
-                        + (overbank_ratio,)
+                        + (OBR_1D,)
                         + (total_arearatio,)
                     )
 
@@ -662,15 +662,15 @@ def chanmetrics_bankpts(
         # Define the schema for the output bank points shapefile:
         properties_dtypes = {
             "xn_num": "int",
-            "linkno": "int",
-            "bank_hght": "float",
-            "bank_elev": "float",
-            "bnk_ang_1": "float",
-            "bnk_ang_2": "float",
-            "bf_area": "float",
-            "chan_width": "float",
-            "obank_rat": "float",
-            "area_ratio": "float",
+            "LINKNO": "int",
+            "BH_1D": "float",
+            "BE_1D": "float",
+            "BA1_1D": "float",
+            "BA2_1D": "float",
+            "CA_1D": "float",
+            "CW_1D": "float",
+            "OBR_1D": "float",
+            "AR_1D": "float",
         }
         schema = {"geometry": "Point", "properties": properties_dtypes}
 
@@ -689,19 +689,19 @@ def chanmetrics_bankpts(
 
                 # << INTERPOLATE XNs >>
                 interpolate_columns = [
-                    "xn_no",
+                    "xn_num",
                     "left_ind",
                     "right_ind",
                     "bank_height",
                     "slices",
-                    "linkno",
-                    "bank_elev",
+                    "LINKNO",
+                    "BE_1D",
                     "lf_bank_ang",
                     "rt_bank_ang",
-                    "bankful_area",
-                    "chan_width",
-                    "overbank_ratio",
-                    "area_ratio",
+                    "CA_1D",
+                    "CW_1D",
+                    "OBR_1D",
+                    "AR_1D",
                 ]
 
                 df_bank_metrics = pd.DataFrame(
@@ -717,7 +717,7 @@ def chanmetrics_bankpts(
                     columns=interpolate_columns,
                 )
 
-                df_bank_metrics.set_index("xn_no", inplace=True)
+                df_bank_metrics.set_index("xn_num", inplace=True)
 
                 df_map = pd.merge(
                     df_xn_elev, df_bank_metrics, left_index=True, right_index=True
@@ -764,28 +764,28 @@ def chanmetrics_bankpts(
 
                     prop_lf = {
                         "xn_num": int(tpl_row.Index),
-                        "linkno": int(tpl_row.linkno_x),
-                        "bank_hght": tpl_row.bank_height,
-                        "bank_elev": tpl_row.bank_elev,
-                        "bnk_ang_1": tpl_row.lf_bank_ang,
-                        "bf_area": tpl_row.bankful_area,
-                        "bnk_ang_2": -9999.0,
-                        "chan_width": tpl_row.chan_width,
-                        "obank_rat": tpl_row.overbank_ratio,
-                        "area_ratio": tpl_row.area_ratio,
+                        "LINKNO": int(tpl_row.LINKNO_x),
+                        "BH_1D": tpl_row.bank_height,
+                        "BE_1D": tpl_row.BE_1D,
+                        "BA1_1D": tpl_row.lf_bank_ang,
+                        "CA_1D": tpl_row.CA_1D,
+                        "BA2_1D": -9999.0,
+                        "CW_1D": tpl_row.CW_1D,
+                        "OBR_1D": tpl_row.OBR_1D,
+                        "AR_1D": tpl_row.AR_1D,
                     }
 
                     prop_rt = {
                         "xn_num": int(tpl_row.Index),
-                        "linkno": int(tpl_row.linkno_x),
-                        "bank_hght": tpl_row.bank_height,
-                        "bank_elev": tpl_row.bank_elev,
-                        "bnk_ang_2": tpl_row.rt_bank_ang,
-                        "bf_area": tpl_row.bankful_area,
-                        "bnk_ang_1": -9999.0,
-                        "chan_width": tpl_row.chan_width,
-                        "obank_rat": tpl_row.overbank_ratio,
-                        "area_ratio": tpl_row.area_ratio,
+                        "LINKNO": int(tpl_row.LINKNO_x),
+                        "BH_1D": tpl_row.bank_height,
+                        "BE_1D": tpl_row.BE_1D,
+                        "BA2_1D": tpl_row.rt_bank_ang,
+                        "CA_1D": tpl_row.CA_1D,
+                        "BA1_1D": -9999.0,
+                        "CW_1D": tpl_row.CW_1D,
+                        "OBR_1D": tpl_row.OBR_1D,
+                        "AR_1D": tpl_row.AR_1D,
                     }
 
                     bankpts.write({"geometry": lf_pt, "properties": prop_lf})
@@ -821,7 +821,7 @@ def read_xns_shp_and_get_dem_window(channel_xns, dem, logger):
     with fiona.open(channel_xns, "r") as xn_shp:
         # Read each feature line:
         for line in xn_shp:
-            lst_linknos.append(line["properties"]["linkno"])
+            lst_linknos.append(line["properties"]["LINKNO"])
             lst_x1.append(line["geometry"]["coordinates"][0][0])
             lst_y1.append(line["geometry"]["coordinates"][0][1])
             lst_x2.append(line["geometry"]["coordinates"][1][0])
@@ -830,7 +830,7 @@ def read_xns_shp_and_get_dem_window(channel_xns, dem, logger):
 
     df_coords = pd.DataFrame(
         {
-            "linkno": lst_linknos,
+            "LINKNO": lst_linknos,
             "x1": lst_x1,
             "y1": lst_y1,
             "x2": lst_x2,
@@ -879,7 +879,7 @@ def read_xns_shp_and_get_dem_window(channel_xns, dem, logger):
         )
 
         ## OR:
-        gp_coords = df_coords.groupby("linkno")
+        gp_coords = df_coords.groupby("LINKNO")
 
         lst_all_zi = []
         j = 0
@@ -943,7 +943,7 @@ def read_xns_shp_and_get_dem_window(channel_xns, dem, logger):
     # print('\tTime interpolating elevation along Xn\'s:'+ str(timeit.default_timer()-start_time))
 
     return pd.DataFrame(
-        lst_all_zi, columns=["linkno", "elev", "xn_row", "xn_col", "strmord"]
+        lst_all_zi, columns=["LINKNO", "elev", "xn_row", "xn_col", "strmord"]
     )
 
 

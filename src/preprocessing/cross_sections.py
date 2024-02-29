@@ -75,7 +75,7 @@ def get_stream_coords_from_features(network, cell_size, reach_id, order_id, csv_
                         lst_order.append(i_order)
 
                     df_coords = pd.DataFrame(
-                        {"x": lst_x, "y": lst_y, "linkno": lst_linkno, "order": lst_order}
+                        {"x": lst_x, "y": lst_y, "LINKNO": lst_linkno, "order": lst_order}
                     )
                     # potential duplicates due to interpolation
                     df_coords.drop_duplicates(subset=["x", "y"], inplace=True)
@@ -162,12 +162,12 @@ def write_xns_shp(df_coords, epsg, xn_file, p_xngap, xn_type):
     # the final output, a list of tuples of XY coordinate pairs for all Xn's for this reach
     xn_cntr = 0
     lst_xnrowcols = []
-    gp_coords = df_coords.groupby("linkno")
+    gp_coords = df_coords.groupby("LINKNO")
 
     # Create the Xn shapefile for writing:
     test_schema = {
         "geometry": "LineString",
-        "properties": {"linkno": "int", "strmord": "int"},
+        "properties": {"LINKNO": "int", "strmord": "int"},
     }
 
     # logger.info("Building and Writing Cross Section File:")
@@ -230,7 +230,7 @@ def write_xns_shp(df_coords, epsg, xn_file, p_xngap, xn_type):
 
                 # the shapefile geometry use (lon,lat) Requires a list of x-y tuples
                 line = {"type": "LineString", "coordinates": lst_xy}
-                prop = {"linkno": i_linkno, "strmord": i_order}
+                prop = {"LINKNO": i_linkno, "strmord": i_order}
                 chan_xns.write({"geometry": line, "properties": prop})
 
     return lst_xnrowcols
