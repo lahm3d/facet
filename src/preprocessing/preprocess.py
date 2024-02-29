@@ -34,24 +34,37 @@ def clip_flowlines(flowlines, mask, output, logger):
         logger.info("NHD Flowlines clipped")
 
 
+def merge_rails_and_roads(aoi_rails, aoi_roads, mask, output, logger):
 
-    road_rail_crossings = gpd.GeoDataFrame(
-        pd.concat([roads_mask, rails_mask], ignore_index=True), 
-        crs=mask.crs
-    )
-    road_rail_crossings.to_file(output)
+    if not output.is_file():
+        roads = utils.vector_to_geodataframe(aoi_roads)
+        rails = utils.vector_to_geodataframe(aoi_rails)
+        mask = utils.vector_to_geodataframe(mask)
+
+        roads_mask = roads.clip(mask)
+        rails_mask = rails.clip(mask)
+
+        road_rail_crossings = gpd.GeoDataFrame(
+            pd.concat([roads_mask, rails_mask], ignore_index=True), 
+            crs=mask.crs
+        )
+        road_rail_crossings.to_file(output)
+        logger.info("Roads and rails merged")
+
+    logger.info("Roads and rails layer already exists. Skipping step")
 
 
-def hydro_condition_dem(Config, Paths):
+def hydro_condition_dem(Config, Paths, logger):
     wbt = whitebox.WhiteboxTools()
     wbt._WhiteboxTools__compress_rasters = "True"
     wbt.set_verbose_mode(False)
 
     merge_rails_and_roads(
-        Config.ancillary['census_rails'], 
-        Config.ancillary['census_roads'], 
-        Paths.watershed, 
-        Paths.road_rail_crossings
+        Config.ancillary['census_rails'],
+        Config.ancillary['census_roads'],
+        Paths.watershed,
+        Paths.road_rail_crossings,
+        logger,
     )
 
     wbt.burn_streams_at_roads(
@@ -61,6 +74,7 @@ def hydro_condition_dem(Config, Paths):
         Paths.burn_crossings, 
         width=Config.preprocess['burn_stream_at_roads']['width'], 
     )
+    logger.info("Streams near roads burned")
 
     wbt.feature_preserving_smoothing(
         Paths.burn_crossings, 
@@ -69,12 +83,15 @@ def hydro_condition_dem(Config, Paths):
         norm_diff=Config.preprocess['denoise']['norm_diff'], 
         num_iter=Config.preprocess['denoise']['num_iter'], 
     )
+    logger.info("Feature preserving smoothing (denoising) performed")
 
     wbt.breach_depressions_least_cost(
-        Paths.denoise, 
-        Paths.breach, 
-        dist=Config.preprocess['breach_depression_least_cost']['dist'], 
-        fill=Config.preprocess['breach_depression_least_cost']['fill'], 
+        Paths.denoise,
+        Paths.breach,
+        dist=Config.preprocess['breach_depression_least_cost']['dist'],
+        # max_cost=Config.preprocess['breach_depression_least_cost']['max_cost'],
+        min_dist=None,
+        fill=None,
     )
 
 
@@ -254,3 +271,4 @@ def run_preprocessing_steps(Config, Paths):
 
 def run_preprocessing_steps(Config, Paths, logger):
     clip_flowlines(Config.ancillary['flowlines'], Paths.watershed, Paths.flowlines, logger)
+    hydro_condition_dem(Config, Paths, logger)

@@ -30,7 +30,8 @@ preprocess = true
 
     [preprocess.breach_depression_least_cost]
     dist = 300 # maximum search distance for breach paths in cells
-    fill = true
+    min_dist = false
+    fill = false
 
     [preprocess.reach-order]
     reach_id = "LINKNO"
