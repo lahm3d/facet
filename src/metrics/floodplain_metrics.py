@@ -68,7 +68,7 @@ def fp_metrics_chsegs(flood_extent_layer, ch_width_id, channel_segs, xn_type, lo
 
                 # Buffer the cross-section to form a 2D rectangle:
                 # about half of the line segment straight line distance
-                buff_len = tpl.dist_sl / 1.85
+                buff_len = tpl.CURVE_STL / 1.85
                 geom_fpls_buff = fp_ls.buffer(buff_len, cap_style=2)
                 xn_buff = mapping(geom_fpls_buff)
 
@@ -195,8 +195,8 @@ def read_fp_xns_shp_and_get_1D_fp_metrics(
     # Read xn file:
     logger.info("Reading Xn file:")
     gdf_xns = gpd.read_file(floodplain_xns)
-    # Groupby linkno:
-    gp_xns = gdf_xns.groupby("linkno")
+    # Groupby LINKNO:
+    gp_xns = gdf_xns.groupby("LINKNO")
 
     # Access the floodplain and DEM grids:
     with rasterio.open(dem) as ds_dem:
@@ -281,40 +281,40 @@ def read_fp_xns_shp_and_get_1D_fp_metrics(
                         lst_sum_e.append(-9999.0)
 
             # Initialize fields:
-            gdf_xns["xn_id_1dfp"] = -9999.0
-            gdf_xns["totwid_1dfp"] = -9999.0
+            gdf_xns["FP_XN_ID"] = -9999.0
+            gdf_xns["FP_WIDTH"] = -9999.0
             # Depth:
-            gdf_xns["mindep_1dfp"] = -9999.0
-            gdf_xns["maxdep_1dfp"] = -9999.0
-            gdf_xns["rngdep_1dfp"] = -9999.0
-            gdf_xns["meandep_1dfp"] = -9999.0
-            gdf_xns["stddep_1dfp"] = -9999.0
-            gdf_xns["sumdep_1dfp"] = -9999.0
+            gdf_xns["FP_D_MIN"] = -9999.0
+            gdf_xns["FP_D_MAX"] = -9999.0
+            gdf_xns["FP_D_RANGE"] = -9999.0
+            gdf_xns["FP_D_MEAN"] = -9999.0
+            gdf_xns["FP_D_STDEV"] = -9999.0
+            gdf_xns["FP_D_SUM"] = -9999.0
             # Elevation:
-            gdf_xns["minele_1dfp"] = -9999.0
-            gdf_xns["maxele_1dfp"] = -9999.0
-            gdf_xns["rngele_1dfp"] = -9999.0
-            gdf_xns["meanele_1dfp"] = -9999.0
-            gdf_xns["stdele_1dfp"] = -9999.0
-            gdf_xns["sumele_1dfp"] = -9999.0
+            gdf_xns["FP_E_MIN"] = -9999.0
+            gdf_xns["FP_E_MAX"] = -9999.0
+            gdf_xns["FP_E_RANGE"] = -9999.0
+            gdf_xns["FP_E_MEAN"] = -9999.0
+            gdf_xns["FP_E_STDEV"] = -9999.0
+            gdf_xns["FP_E_SUM"] = -9999.0
 
             # Add new values:
-            gdf_xns.loc[lst_index, "xn_id_1dfp"] = lst_id
-            gdf_xns.loc[lst_index, "totwid_1dfp"] = lst_width
+            gdf_xns.loc[lst_index, "FP_XN_ID"] = lst_id
+            gdf_xns.loc[lst_index, "FP_WIDTH"] = lst_width
             # Depth:
-            gdf_xns.loc[lst_index, "mindep_1dfp"] = lst_min_d
-            gdf_xns.loc[lst_index, "maxdep_1dfp"] = lst_max_d
-            gdf_xns.loc[lst_index, "rngdep_1dfp"] = lst_rng_d
-            gdf_xns.loc[lst_index, "meandep_1dfp"] = lst_mean_d
-            gdf_xns.loc[lst_index, "stddep_1dfp"] = lst_std_d
-            gdf_xns.loc[lst_index, "sumdep_1dfp"] = lst_sum_d
+            gdf_xns.loc[lst_index, "FP_D_MIN"] = lst_min_d
+            gdf_xns.loc[lst_index, "FP_D_MAX"] = lst_max_d
+            gdf_xns.loc[lst_index, "FP_D_RANGE"] = lst_rng_d
+            gdf_xns.loc[lst_index, "FP_D_MEAN"] = lst_mean_d
+            gdf_xns.loc[lst_index, "FP_D_STDEV"] = lst_std_d
+            gdf_xns.loc[lst_index, "FP_D_SUM"] = lst_sum_d
             # Elevation:
-            gdf_xns.loc[lst_index, "minele_1dfp"] = lst_min_e
-            gdf_xns.loc[lst_index, "maxele_1dfp"] = lst_max_e
-            gdf_xns.loc[lst_index, "rngele_1dfp"] = lst_rng_e
-            gdf_xns.loc[lst_index, "meanele_1dfp"] = lst_mean_e
-            gdf_xns.loc[lst_index, "stdele_1dfp"] = lst_std_e
-            gdf_xns.loc[lst_index, "sumele_1dfp"] = lst_sum_e
+            gdf_xns.loc[lst_index, "FP_E_MIN"] = lst_min_e
+            gdf_xns.loc[lst_index, "FP_E_MAX"] = lst_max_e
+            gdf_xns.loc[lst_index, "FP_E_RANGE"] = lst_rng_e
+            gdf_xns.loc[lst_index, "FP_E_MEAN"] = lst_mean_e
+            gdf_xns.loc[lst_index, "FP_E_STDEV"] = lst_std_e
+            gdf_xns.loc[lst_index, "FP_E_SUM"] = lst_sum_e
 
             # Save it again:
             gdf_xns.to_file(floodplain_xns)
@@ -415,7 +415,7 @@ def hand_method(
                             # Buffer the cross-section to form a 2D rectangle:
                             # about half of the line segment...
                             # ...straight line distance --> AFFECTS LABELLED ARRAY!
-                            buff_len = tpl.dist_sl / 2.5
+                            buff_len = tpl.CURVE_STL / 2.5
                             geom_fpls_buff = fp_ls.buffer(buff_len, cap_style=2)
                             xn_buff = mapping(geom_fpls_buff)
 
@@ -452,7 +452,7 @@ def hand_method(
                             w_dem = w_dem[0]
 
                             # Channel pixel indices:
-                            src_inds = np.where(w_src == tpl.linkno)
+                            src_inds = np.where(w_src == tpl.LINKNO)
                             # Convert to a set to keep only unique values:
                             src_inds = set(zip(src_inds[0], src_inds[1]))
 
@@ -495,7 +495,7 @@ def hand_method(
                                     if len(src_inds.intersection(inds)) > 0:
                                         lst_count.append(len(inds))
                                         lst_width.append(
-                                            len(inds) * (res**2) / tpl.dist_sl
+                                            len(inds) * (res**2) / tpl.CURVE_STL
                                         )
                                         lst_height.append(i_step)
                                         lst_inds.append(inds)
@@ -515,7 +515,7 @@ def hand_method(
                                 lst_bnk_ht.append(-9999.0)
                                 lst_chn_wid.append(-9999.0)
                                 lst_chn_shp.append(-9999.0)
-                                lst_linkno.append(tpl.linkno)
+                                lst_linkno.append(tpl.LINKNO)
                                 lst_geom.append(tpl.geometry)
                                 # FP metrics:
                                 lst_fpmax.append(-9999.0)
@@ -577,7 +577,7 @@ def hand_method(
                                     lst_bnk_ht.append(bnk_ht)
                                     lst_chn_wid.append(chn_wid)
                                     lst_chn_shp.append(chn_shp)
-                                    lst_linkno.append(tpl.linkno)
+                                    lst_linkno.append(tpl.LINKNO)
                                     lst_geom.append(tpl.geometry)
                                     continue
 
@@ -648,7 +648,7 @@ def hand_method(
                             lst_bnk_ht.append(bnk_ht)
                             lst_chn_wid.append(chn_wid)
                             lst_chn_shp.append(chn_shp)
-                            lst_linkno.append(tpl.linkno)
+                            lst_linkno.append(tpl.LINKNO)
                             lst_geom.append(tpl.geometry)
 
                             # logger.info('hey')
@@ -672,7 +672,7 @@ def hand_method(
                             lst_bnk_ht.append(-9999.0)
                             lst_chn_wid.append(-9999.0)
                             lst_chn_shp.append(-9999.0)
-                            lst_linkno.append(tpl.linkno)
+                            lst_linkno.append(tpl.LINKNO)
                             lst_geom.append(tpl.geometry)
                             continue
 
@@ -724,7 +724,4 @@ def derive(
     ):
 
     read_fp_xns_shp_and_get_1D_fp_metrics(floodplain_xns, flood_extent_layer, dem, logger)
-    fp_metrics_chsegs(flood_extent_layer, ch_width_id, channel_segs, xn_type, logger)
-
-
-
+    # fp_metrics_chsegs(flood_extent_layer, ch_width_id, channel_segs, xn_type, logger)
