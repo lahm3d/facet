@@ -92,6 +92,8 @@ def hydro_condition_dem(Config, Paths, logger):
         fill=None,
     )
 
+    logger.info("Depressions breached")
+
 
 def create_weight_grid_from_streamlines(
     flowlines, watershed, dem, initiation_pixels
@@ -150,6 +152,7 @@ def create_weight_grid_from_streamlines(
                 logger.info("Channel initiation nodes generated")
 
 
+def delineate_elevation_aligned_stream_network(Config, Paths, logger):
 
     num_cores = Config.preprocess['taudem']['cores']
 
@@ -180,43 +183,51 @@ def create_weight_grid_from_streamlines(
         'hand grid': f'mpiexec -n {num_cores} dinfdistdown -fel "{dem}" -ang "{ang}" -src "{ad8_wg}" -dd "{dd}" -m ave v'
         }
 
-    for key, cmd in taudem_workflow.items():
-        run_command(cmd)
-
-def polygonize_subwatershed_and_append_attributes(Config, Paths):
-
-    # run_command(f'gdal_polygonize.py -8 "{Paths.sub_watersheds_rast}" "{Paths.sub_watersheds_poly}"')
-    gdal_polygonize(
-        str(Paths.sub_watersheds_rast),
-        1,
-        str(Paths.sub_watersheds_poly),
-        connectedness8=True
-    )
-
-    # 1 - read in watershed polygons
-    sub_watersheds = gpd.read_file(Paths.sub_watersheds_poly)
-    sub_watersheds = sub_watersheds.rename(columns={'DN': 'LINKNO'})
-    # 2 - polygons to centroid points
-    watershed_points = sub_watersheds.copy()
-    watershed_points.geometry = watershed_points.geometry.centroid
-    # 3 - spatial join points to physiographic regions
-
-    with fsspec.open(Config.ancillary['physiography']) as parquet:
-        physiography = gpd.read_parquet(parquet)
-
-    physio_in_watersheds = gpd.sjoin(watershed_points, physiography, how='left')  # spatial join
-    physio_in_watersheds = physio_in_watersheds[['LINKNO', 'PROVINCE']]
-
-    # 4 - merge attrs to watershed polygons
-    network = gpd.read_file(Paths.network_poly)
-    network = network.drop(['geometry'], axis=1)
-
-    merge = sub_watersheds.merge(physio_in_watersheds, on='LINKNO')  # merge 1
-    merge = merge.merge(network, on='LINKNO')  # merge 2
-    merge.to_file(Paths.sub_watersheds_poly)
+    for cmd in taudem_workflow.values():
+        run_command(cmd, logger)
+    
+    logger.info("Preprocessing steps complete")
 
 
-def run_command(cmd: str) -> None:
+def polygonize_subwatershed_and_append_attributes(Config, Paths, logger):
+
+    if not Paths.sub_watersheds_poly.is_file():
+        gdal_polygonize(
+            str(Paths.sub_watersheds_rast),
+            1,
+            str(Paths.sub_watersheds_poly),
+            connectedness8=True
+        )
+
+        # 1 - read in watershed polygons
+        sub_watersheds = gpd.read_file(Paths.sub_watersheds_poly)
+        sub_watersheds = sub_watersheds.rename(columns={'DN': 'LINKNO'})
+
+        # 2 - polygons to centroid points
+        watershed_points = sub_watersheds.copy()
+        watershed_points.geometry = watershed_points.geometry.centroid
+
+        # 3 - spatial join points to physiographic regions
+        physiography = utils.vector_to_geodataframe(
+            Config.ancillary['physiography']
+        )
+
+        physio_in_watersheds = gpd.sjoin(watershed_points, physiography, how='left')  # spatial join
+        physio_in_watersheds = physio_in_watersheds[['LINKNO', 'PROVINCE']]
+
+        # 4 - merge attrs to watershed polygons
+        network = gpd.read_file(Paths.network_poly)
+        network = network.drop(['geometry'], axis=1)
+
+        merge = sub_watersheds.merge(physio_in_watersheds, on='LINKNO')  # merge 1
+        merge = merge.merge(network, on='LINKNO')  # merge 2
+        merge.to_file(Paths.sub_watersheds_poly)
+        logger.info("Sub-watersheds/catchments delineated")
+    else:
+        logger.info("Sub-watersheds/catchments already exist. Skipping step.")
+
+
+def run_command(cmd, logger):
     """
     Execute commands as subprocesses
 
@@ -233,31 +244,21 @@ def run_command(cmd: str) -> None:
         # Get some feedback from the process to print out:
         if err is None:
             text = output.decode()
-            print("\n", text, "\n")
+            logger.error(f'\n {text} \n')
         else:
-            print(err)
+            logger.info(f'Run successful. \n {text}')
 
     except subprocess.CalledProcessError as e:
-        print(f"failed to return code: {e}")
+        logger.error(f"failed to return code: {e}")
     except OSError as e:
-        print(f"failed to execute shell: {e}")
+        logger.error(f"failed to execute shell: {e}")
     except IOError as e:
-        print(f"failed to read file(s): {e}")
-
-
-def run_preprocessing_steps(Config, Paths):
-    clip_flowlines(Config.ancillary['flowlines'], Paths.watershed, Paths.flowlines)
-    hydro_condition_dem(Config, Paths)
-    create_weight_grid_from_streamlines(Paths.flowlines, Paths.dem, Paths.initiation_pixels)
-    delineate_elevation_aligned_stream_network(Config, Paths)
-    polygonize_subwatershed_and_append_attributes(Config, Paths)
-
-# if __name__ == '__main__':
-
-
+        logger.error(f"failed to read file(s): {e}")
 
 
 def run_preprocessing_steps(Config, Paths, logger):
     clip_flowlines(Config.ancillary['flowlines'], Paths.watershed, Paths.flowlines, logger)
     hydro_condition_dem(Config, Paths, logger)
     create_weight_grid_from_streamlines(Paths.flowlines, Paths.watershed, Paths.dem, Paths.initiation_pixels, logger)
+    delineate_elevation_aligned_stream_network(Config, Paths, logger)
+    polygonize_subwatershed_and_append_attributes(Config, Paths, logger)
