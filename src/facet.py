@@ -30,6 +30,7 @@ from metrics import flood_inundation_map as fim
 from metrics import floodplain_metrics
 
 # debug
+from postprocessing import spatial_qc as qc
 # from src.utils import parse_toml, utils
 # from src.utils.batch import generate_processing_batch
 # from src.preprocessing import preprocess, cross_sections, network_smoothing
@@ -124,7 +125,43 @@ if __name__ == "__main__":
             Paths.hand, Paths.channel_segs, Paths.network_poly,
             Paths.network_rast, Paths.flood_extent_layer, Paths.dem,
             Config.xn_lengths["floodplain"], logger
+        flowline_mask = qc.create_flowline_qc_mask(
+            Paths.flowlines, 
+            Config.postprocess['stream-buffer'], 
+            Paths.watershed
         )
+        
+        waterbody_mask = qc.create_waterbody_qc_mask(
+            Config.ancillary['nhd_wbds'],
+            [390, 436], 
+            Paths.watershed
+            )
+        
+        # flag bankpoints:
+        bank_points_qc = utils.vector_to_geodataframe(Paths.bank_points)
+        bank_points_qc = qc.flag_features_by_qc_mask(
+            bank_points_qc, flowline_mask, "NHD_Flag", "xn_num"
+            )
+        bank_points_qc = qc.flag_features_by_qc_mask(
+            bank_points_qc, waterbody_mask, "WBD_Flag", "xn_num", output=Paths.pp_bank_points
+            )
 
-        stop = timer() - start
-        print(f"{timer() - start} seconds")
+        # flag channel segs:
+        channel_segs_qc = utils.vector_to_geodataframe(Paths.channel_segs)
+
+        channel_segs_qc = qc.flag_features_by_qc_mask(
+            channel_segs_qc, flowline_mask, "NHD_Flag"
+            )
+        channel_segs_qc = qc.flag_features_by_qc_mask(
+            channel_segs_qc, waterbody_mask, "WBD_Flag", output=Paths.pp_channel_segs
+            )
+
+        # flag floodplain xns:
+        floodplain_xns_qc = utils.vector_to_geodataframe(Paths.floodplain_xns)
+
+        floodplain_xns_qc = qc.flag_features_by_qc_mask(
+            floodplain_xns_qc, flowline_mask, "NHD_Flag"
+            )
+        floodplain_xns_qc = qc.flag_features_by_qc_mask(
+            floodplain_xns_qc, waterbody_mask, "WBD_Flag", output=Paths.pp_floodplain_xns
+            )

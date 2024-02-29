@@ -42,6 +42,11 @@ floodplain_xns = "floodplain_xns.shp" # _floodplain_xns_1D_metrics.shp
 # [hand-method]
 hand_metrics = "hand_metrics.shp"
 
+# post-process outputs
+pp_bank_points      = "postprocess_bank_points.shp" # bankpoints_1D_metrics.shp
+pp_floodplain_xns   = "postprocess_floodplain_xns.shp" # _floodplain_xns_1D_metrics.shp
+pp_channel_segs     = "postprocess_channel_segs.shp"
+pp_hand_metrics     = "postprocess_hand_metrics.shp"
 
 # [inputs]
 # flowlines = "flowlines.shp"
