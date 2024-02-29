@@ -239,18 +239,18 @@ def channel_width_from_bank_pixels(
     logger.info("Channel width from bank pixels -- segmented reaches:")
 
     j = 0
-    gp_coords = df_coords.groupby("linkno")
+    gp_coords = df_coords.groupby("LINKNO")
 
     # Schema for the output properties file:
     schema_output = {
         "geometry": "LineString",
         "properties": {
-            "linkno": "int",
-            "ch_wid_total": "float",
-            "ch_wid_1": "float",
-            "ch_wid_2": "float",
-            "dist_sl": "float",
-            "dist": "float",
+            "LINKNO": "int",
+            "CURVE_WD": "float",
+            "CURVE1_WD": "float",
+            "CURVE2_WD": "float",
+            "CURVE_STL": "float",
+            "CURVE_LEN": "float",
             "sinuosity": "float",
             "order": "int",
         },
@@ -276,16 +276,21 @@ def channel_width_from_bank_pixels(
                 for i_linkno, df_linkno in gp_coords:
                     j += 1
                     i_linkno = int(i_linkno)
-                    logger.info("linkno:  {}".format(i_linkno))
+                    logger.info("LINKNO:  {}".format(i_linkno))
 
                     # << Analysis by reach segments >>
                     # Set up index array to split up df_linkno into segments
-                    # (these dictate the reach segment length):
-                    # NOTE:  Reach might not be long enough to break up
-                    arr_ind = np.arange(
-                        i_step, len(df_linkno.index) + 1, i_step
-                    )  # NOTE: Change the step for resolution
-                    lst_dfsegs = np.split(df_linkno, arr_ind)
+                    # (these dictate the reach segment length):                    
+                    # NOTE: Change the step for resolution
+                    arr_ind = np.arange(0, len(df_linkno.index) + 1, i_step) 
+
+                    lst_dfsegs = []
+                    for i in range(len(arr_ind)):
+                        start_index = arr_ind[i]
+                        end_index = arr_ind[i+1] if i < len(arr_ind) - 1 else None  # Slice till the next index if it exists
+                        print(start_index, end_index)
+                        chunk = df_linkno.iloc[start_index:end_index]
+                        lst_dfsegs.append(chunk)
 
                     for i_seg, df_seg in enumerate(
                         lst_dfsegs
@@ -366,7 +371,7 @@ def channel_width_from_bank_pixels(
                             df_tally = pd.DataFrame(
                                 lst_tally,
                                 columns=[
-                                    "linkno",
+                                    "LINKNO",
                                     "buffer",
                                     "interval_left",
                                     "interval_rt",
@@ -425,12 +430,12 @@ def channel_width_from_bank_pixels(
                         output.write(
                             {
                                 "properties": {
-                                    "linkno": i_linkno,
-                                    "ch_wid_total": weighted_avg_left + weighted_avg_rt,
-                                    "ch_wid_1": weighted_avg_left,
-                                    "ch_wid_2": weighted_avg_rt,
-                                    "dist_sl": dist_sl,
-                                    "dist": dist,
+                                    "LINKNO": i_linkno,
+                                    "CURVE_WD": weighted_avg_left + weighted_avg_rt,
+                                    "CURVE1_WD": weighted_avg_left,
+                                    "CURVE2_WD": weighted_avg_rt,
+                                    "CURVE_STL": dist_sl,
+                                    "CURVE_LEN": dist,
                                     "sinuosity": sinuosity,
                                     "order": int(order),
                                 },
