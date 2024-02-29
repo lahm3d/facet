@@ -12,37 +12,28 @@ from rasterio.features import shapes
 from shapely.geometry import shape
 import subprocess
 import numpy as np
-import fsspec
+from utils import utils
 
-def clip_flowlines(flowlines, mask, output):
+def clip_flowlines(flowlines, mask, output, logger):
 
-    with fsspec.open(flowlines) as parquet:
-        aoi_flowlines = gpd.read_parquet(parquet)
-    mask = gpd.read_file(mask)
+    aoi_flowlines = utils.vector_to_geodataframe(flowlines)
+    mask = utils.vector_to_geodataframe(mask)
     flowlines = aoi_flowlines.clip(mask)
 
-    # to address datetime64 not supported by Esri Shapefile
-    datetime_columns = [
-        col for col in flowlines.columns if flowlines[col].dtype == 'datetime64[ms, UTC]'
-        ]
-    for col in datetime_columns:
-        flowlines[col] = flowlines[col].dt.strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        flowlines.to_file(output)
+        logger.info("NHD Flowlines clipped")
+    except fiona.errors.DriverSupportError as e:
+        logger.info(f"Error encountered while writing the flowline file: {e}")
+        # datetime64 not supported by Esri Shapefile, so column will be dropped
+        new_columns = [
+            col for col in flowlines.columns if flowlines[col].dtype != 'datetime64[ms, UTC]'
+            ]
+        flowlines = flowlines[new_columns]
+        flowlines.to_file(output)
+        logger.info("NHD Flowlines clipped")
 
-    flowlines.to_file(output)
 
-
-def merge_rails_and_roads(aoi_rails, aoi_roads, mask, output):
-
-    with fsspec.open(aoi_roads) as parquet:
-        roads = gpd.read_parquet(parquet)
-
-    with fsspec.open(aoi_rails) as parquet:
-        rails = gpd.read_parquet(parquet)
-
-    mask = gpd.read_file(mask)
-
-    roads_mask = roads.clip(mask)
-    rails_mask = rails.clip(mask)
 
     road_rail_crossings = gpd.GeoDataFrame(
         pd.concat([roads_mask, rails_mask], ignore_index=True), 
@@ -261,3 +252,5 @@ def run_preprocessing_steps(Config, Paths):
 
 
 
+def run_preprocessing_steps(Config, Paths, logger):
+    clip_flowlines(Config.ancillary['flowlines'], Paths.watershed, Paths.flowlines, logger)

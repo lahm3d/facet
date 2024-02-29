@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
         logger.info(f"Running {huc}...")
 
-        preprocess.run_preprocessing_steps(Config, Paths)
+        preprocess.run_preprocessing_steps(Config, Paths, logger)
 
         #### EXPERIMENTAL NETWORK SMOOTHING ####
         # test sample smoothing using 3 refinements
