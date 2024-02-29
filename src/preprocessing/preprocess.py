@@ -7,9 +7,6 @@ import fiona
 from osgeo import gdal
 from osgeo_utils.gdal_polygonize import gdal_polygonize
 import rasterio
-from rasterio.warp import transform
-from rasterio.features import shapes
-from shapely.geometry import shape
 import subprocess
 import numpy as np
 from utils import utils
