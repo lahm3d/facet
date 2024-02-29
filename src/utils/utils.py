@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess
 import rasterio
 import geopandas as gpd
+import fsspec
 
 
 def create_folder(Paths):
@@ -42,26 +43,15 @@ def run_command(cmd: str, logger: logging.getLogger()) -> None:
         logger.critical(f"failed to read file(s): {e}")
 
 
-# def setup_logging(log_file: Path):
-#     """
-#     Set up logger attrributes
-#     Args:
-#         huc_id: HUC ID code
-#         huc_dir: Directory to the HUC data
+def vector_to_geodataframe(file):
+    file = Path(file)
+    ext = file.suffix
 
-#     Returns: Path to the log file and the timestamp as a string
-#     """
-#     # clean logging handlers
-#     clear_out_logger()
-#     # construct time stamps and log file name
-#     # st_tstamp = strftime(
-#     #     "%a, %d %b %Y %I:%M:%S %p"
-#     # )  # e.g. Thu, 19 Sep 2019 12:20:41 PM
-#     # log_file = huc_dir / f'{huc_id}_{strftime("_%y%m%d.log")}'
-#     # delete old log file - it will not delete old logs from previous dates
-#     if log_file.is_file():
-#         os.remove(log_file)
-#     return log_file #, st_tstamp
+    if ext == '.parquet':
+        with fsspec.open(file) as parquet:
+            return gpd.read_parquet(parquet)
+    else:
+        return gpd.read_file(file)
 
 
 def initialize_logger(log_file: str) -> logging.getLogger():
