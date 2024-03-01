@@ -120,3 +120,4 @@ def rasterize(vector_file: Path, ref_raster: Path, raster_file: Path, ID: str) -
         arr_burned = rasterio.features.rasterize(
             shapes=shapes, fill=0, out=out_arr, transform=out.transform
         )
+        out.write_band(1, arr_burned)
