@@ -120,11 +120,12 @@ if __name__ == "__main__":
             logger
         )
 
-        # Experimental HAND method
-        floodplain_metrics.hand_method(
-            Paths.hand, Paths.channel_segs, Paths.network_poly,
-            Paths.network_rast, Paths.flood_extent_layer, Paths.dem,
-            Config.xn_lengths["floodplain"], logger
+        # # Experimental HAND method
+        # floodplain_metrics.hand_method(
+        #     Paths.hand, Paths.channel_segs, Paths.network_poly,
+        #     Paths.network_rast, Paths.flood_extent_layer, Paths.dem,
+        #     Config.xn_lengths["floodplain"], logger
+        # )
 
 
         flowline_mask = qc.create_flowline_qc_mask(
