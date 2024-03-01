@@ -121,10 +121,10 @@ def bankpixels_from_curvature_window(
 
             for tpl_row in df_coords.itertuples():
 
-                if tpl_row.order == 5:
+                if tpl_row.strmOrder == 5:
                     win_height = 40  # number of rows
                     win_width = 40  # number of columns
-                if tpl_row.order >= 6:
+                if tpl_row.strmOrder >= 6:
                     win_height = 80
                     win_width = 80
 
@@ -252,7 +252,7 @@ def channel_width_from_bank_pixels(
             "CURVE_STL": "float",
             "CURVE_LEN": "float",
             "sinuosity": "float",
-            "order": "int",
+            "strmOrder": "int",
         },
     }
 
@@ -296,12 +296,12 @@ def channel_width_from_bank_pixels(
                         lst_dfsegs
                     ):  # looping over each reach segment
 
-                        order = df_seg.order.max()
+                        strmOrder = df_seg.strmOrder.max()
 
                         try:
-                            order = int(order)
+                            strmOrder = int(strmOrder)
                         except:
-                            order = 1
+                            strmOrder = 1
 
                         arr_x = df_seg.x.values
                         arr_y = df_seg.y.values
@@ -437,7 +437,7 @@ def channel_width_from_bank_pixels(
                                     "CURVE_STL": dist_sl,
                                     "CURVE_LEN": dist,
                                     "sinuosity": sinuosity,
-                                    "order": int(order),
+                                    "strmOrder": int(strmOrder),
                                 },
                                 "geometry": mapping(ls),
                             }
