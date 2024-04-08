@@ -3,12 +3,15 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - aiohttp
   - geopandas
   - fsspec
+  - jupyterlab
   - numpy
   - pandas
+  - plotly
   - pyarrow
-  - python=3.11
+  - python=
   - rasterio
   - requests
   - scipy
