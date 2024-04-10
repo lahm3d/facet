@@ -9,14 +9,11 @@ import pandas as pd
 from shapely.geometry import LineString
 
 
-
-def get_stream_coords_from_features(network, cell_size, reach_id, order_id, csv_output):
+def get_stream_coords_from_features(network, xn_gap, reach_id, order_id, csv_output):
     """
-
-
     Args:
         network:
-        cell_size:
+        xn_gap:
         reach_id:
         order_id:
 
@@ -29,7 +26,7 @@ def get_stream_coords_from_features(network, cell_size, reach_id, order_id, csv_
         lst_df_final = []
 
         p_interp_spacing = int(
-            cell_size
+            xn_gap
         )  # 3 # larger numbers would simulate a more smoothed reach
         j = 0  # prog bar
 
@@ -87,7 +84,7 @@ def get_stream_coords_from_features(network, cell_size, reach_id, order_id, csv_
         return df_final
 
 
-def build_xns(lstThisSegmentRows, lstThisSegmentCols, midPtCol, midPtRow, p_xnlength):
+def build_xns(xn_slope_vertical_cutoff, lstThisSegmentRows, lstThisSegmentCols, midPtCol, midPtRow, p_xnlength):
     """
     Build cross-sections based on vector features
 
@@ -100,7 +97,7 @@ def build_xns(lstThisSegmentRows, lstThisSegmentCols, midPtCol, midPtRow, p_xnle
 
     Returns:
     """
-    slopeCutoffVertical = 20  # another check
+    xn_slope_vertical_cutoff = 20  # another check
 
     # Find initial slope:
     if abs(lstThisSegmentCols[0] - lstThisSegmentCols[-1]) < 3:
@@ -128,7 +125,7 @@ def build_xns(lstThisSegmentRows, lstThisSegmentCols, midPtCol, midPtRow, p_xnle
 
         # Make sure it's not too close to vertical:
         # NOTE X-Y vs. Row-Col here:
-        if abs(m_ortho) > slopeCutoffVertical:
+        if abs(m_ortho) > xn_slope_vertical_cutoff:
             tpl_xy = (midPtCol, midPtRow + r)
 
         else:
@@ -142,7 +139,7 @@ def build_xns(lstThisSegmentRows, lstThisSegmentCols, midPtCol, midPtRow, p_xnle
     return lst_xy
 
 
-def write_xns_shp(df_coords, epsg, xn_file, p_xngap, xn_type):
+def write_xns_shp(df_coords, epsg, xn_file, xn_gap, xn_type, xn_slope_vertical_cutoff):
     """
     Builds Xns from x-y pairs representing shapely interpolations along a reach
 
@@ -151,14 +148,14 @@ def write_xns_shp(df_coords, epsg, xn_file, p_xngap, xn_type):
         epsg:
         xn_file:
         bool_isvalley:
-        p_xngap:
+        xn_gap:
         logger:
 
     Returns: list of tuples of lists describing the Xn's along a reach (row, col)
     """
     j = 0
 
-    # slopeCutoffVertical = 20 # just a threshold determining when to call a Xn vertical
+    # xn_slope_vertical_cutoff = 20 # just a threshold determining when to call a Xn vertical
     # the final output, a list of tuples of XY coordinate pairs for all Xn's for this reach
     xn_cntr = 0
     lst_xnrowcols = []
@@ -193,19 +190,19 @@ def write_xns_shp(df_coords, epsg, xn_file, p_xngap, xn_type):
 
             reach_len = len(df_linkno["x"])
 
-            if reach_len <= p_xngap:
+            if reach_len <= xn_gap:
                 #                logger.info('Less than!')
                 continue  # skip it for now
 
             # Loop along the reach at the specified intervals:(Xn loop)
-            for i in range(p_xngap, reach_len - p_xngap, p_xngap):
+            for xn_num, i in enumerate(range(xn_gap, reach_len - xn_gap, xn_gap)):
 
                 lstThisSegmentRows = []
                 lstThisSegmentCols = []
 
                 # if i + paramFitLength > reach_len
                 if p_fitlength > i or i + p_fitlength >= reach_len:
-                    fitLength = p_xngap
+                    fitLength = xn_gap
                 else:
                     fitLength = p_fitlength
 
@@ -219,6 +216,7 @@ def write_xns_shp(df_coords, epsg, xn_file, p_xngap, xn_type):
 
                 # Send it the endpts of what you to draw a perpendicular line to:
                 lst_xy = build_xns(
+                    xn_slope_vertical_cutoff,
                     lstThisSegmentRows,
                     lstThisSegmentCols,
                     midPtCol,
@@ -237,17 +235,32 @@ def write_xns_shp(df_coords, epsg, xn_file, p_xngap, xn_type):
 
 
 
-def generate(Config, Paths, cell_size):
+def generate(Config, Paths):
 
-    coords = get_stream_coords_from_features(Paths.network_poly,
-        cell_size,
+    coords = get_stream_coords_from_features(
+        Paths.network_poly,
+        Config.xn_lengths['xn_gap'],
         Config.preprocess['reach-order']['reach_id'],
         Config.preprocess['reach-order']['order_id'],
         Paths.xn_coordinates
     )
 
     # channels
-    write_xns_shp(coords, Config.spatial_ref['epsg'], Paths.channel_xns, Config.methods['cross_section']['p_xngap'], Config.xn_lengths["channel"])
+    write_xns_shp(
+        coords, 
+        Config.spatial_ref['epsg'], 
+        Paths.channel_xns, 
+        Config.xn_lengths['xn_gap'], 
+        Config.xn_lengths["channel"],
+        Config.xn_lengths['xn_slope_vertical_cutoff'],
+    )
 
     # floodplains
-    write_xns_shp(coords, Config.spatial_ref['epsg'], Paths.floodplain_xns, Config.methods['cross_section']['p_xngap'], Config.xn_lengths["floodplain"])
+    write_xns_shp(
+        coords, 
+        Config.spatial_ref['epsg'], 
+        Paths.floodplain_xns, 
+        Config.xn_lengths['xn_gap'], 
+        Config.xn_lengths["floodplain"],
+        Config.xn_lengths['xn_slope_vertical_cutoff'],
+    )

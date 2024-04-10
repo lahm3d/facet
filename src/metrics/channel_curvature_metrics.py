@@ -52,8 +52,7 @@ def gauss_kern(sigma):
 def bankpixels_from_curvature_window(
     df_coords,
     cell_size, 
-    win_height, 
-    win_width, 
+    curvature_windows, 
     buffer, 
     curve_threshold, 
     minimum_window_size,
@@ -120,13 +119,19 @@ def bankpixels_from_curvature_window(
             )
 
             for tpl_row in df_coords.itertuples():
+                # if tpl_row.order == 5:
+                #     win_height = 40  # number of rows
+                #     win_width = 40  # number of columns
+                # if tpl_row.order >= 6:
+                #     win_height = 80
+                #     win_width = 80
 
-                if tpl_row.strmOrder == 5:
-                    win_height = 40  # number of rows
-                    win_width = 40  # number of columns
-                if tpl_row.strmOrder >= 6:
-                    win_height = 80
-                    win_width = 80
+                if tpl_row.order > 6:
+                    order_no = str(6)
+                else:
+                    order_no = str(tpl_row.order)
+
+                win_height, win_width = curvature_windows[order_no].values()
 
                 j += 1
 
@@ -142,9 +147,9 @@ def bankpixels_from_curvature_window(
 
                 # Then extract the internal part of the window that contains the rotated window
                 w[
-                    w > 9999999.0
+                    w > 9999.0
                 ] = 0.0  # NoData values may have been corrupted by preprocessing
-                w[w < -9999999.0] = 0.0
+                w[w < -9999] = 0.0
 
                 # make sure a window of appropriate size was returned from the DEM
                 if np.size(w) > minimum_window_size:
@@ -288,15 +293,13 @@ def channel_width_from_bank_pixels(
                     for i in range(len(arr_ind)):
                         start_index = arr_ind[i]
                         end_index = arr_ind[i+1] if i < len(arr_ind) - 1 else None  # Slice till the next index if it exists
-                        print(start_index, end_index)
                         chunk = df_linkno.iloc[start_index:end_index]
                         lst_dfsegs.append(chunk)
 
                     for i_seg, df_seg in enumerate(
                         lst_dfsegs
                     ):  # looping over each reach segment
-
-                        strmOrder = df_seg.strmOrder.max()
+                        strmOrder = df_seg.order.max()
 
                         try:
                             strmOrder = int(strmOrder)
@@ -450,14 +453,12 @@ def derive(xn_coordinates, dem, bank_pixels, cell_size, wavelet_parameters, netw
 
     df_coords = pd.read_csv(xn_coordinates)
 
-    win_height, win_width, buffer, curve_threshold, minimum_window_size, method, i_step, max_buff = wavelet_parameters.values()
-    # print(win_height, win_width)
+    buffer, curve_threshold, minimum_window_size, method, i_step, max_buff, curvature_windows = wavelet_parameters.values()
 
     bankpixels_from_curvature_window(
         df_coords,
         cell_size, 
-        win_height, 
-        win_width, 
+        curvature_windows, 
         buffer, 
         curve_threshold, 
         minimum_window_size,

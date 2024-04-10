@@ -11,7 +11,7 @@ import geopandas as gpd
 # from utils import utils
 
 
-def find_bank_angles(tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert, xn_ptdistance, logger):
+def find_bank_angles(tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert, cell_size, logger):
     """
     Calculate angle from vertical of left and right banks
 
@@ -21,7 +21,7 @@ def find_bank_angles(tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert,
         xn_len:
         xn_elev_n:
         parm_ivert:
-        xn_ptdistance:
+        cell_size:
         logger:
 
     Returns:
@@ -52,7 +52,7 @@ def find_bank_angles(tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert,
                     lf_angle = (
                         atan(
                             (abs(lf_bottombank_ind - tpl_bfpts[1]))
-                            / ((tpl_bfpts[3] - parm_ivert) * xn_ptdistance)
+                            / ((tpl_bfpts[3] - parm_ivert) * cell_size)
                         )
                         * 57.29578
                     )
@@ -79,7 +79,7 @@ def find_bank_angles(tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert,
                     rt_angle = (
                         atan(
                             (abs(rt_bottombank_ind - tpl_bfpts[2]))
-                            / ((tpl_bfpts[3] - parm_ivert) * xn_ptdistance)
+                            / ((tpl_bfpts[3] - parm_ivert) * cell_size)
                         )
                         * 57.29578
                     )
@@ -94,7 +94,7 @@ def find_bank_angles(tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert,
             if abs(lf_bottom_ind - tpl_bfpts[1]) > 0:
                 lf_angle = (
                     atan(
-                        (abs(lf_bottom_ind - tpl_bfpts[1]) * xn_ptdistance)
+                        (abs(lf_bottom_ind - tpl_bfpts[1]) * cell_size)
                         / tpl_bfpts[3]
                     )
                     * 57.29578
@@ -105,7 +105,7 @@ def find_bank_angles(tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert,
             if abs(rt_bottom_ind - tpl_bfpts[2]) > 0:
                 rt_angle = (
                     atan(
-                        (abs(rt_bottom_ind - tpl_bfpts[2]) * xn_ptdistance)
+                        (abs(rt_bottom_ind - tpl_bfpts[2]) * cell_size)
                         / tpl_bfpts[3]
                     )
                     * 57.29578
@@ -400,7 +400,7 @@ def is_contiguous(gtzero_inds):
 def analyze_xnelev(
     df_xn_elev,
     param_ivert,
-    xn_ptdist,
+    cell_size,
     param_ratiothreshold,
     param_slpthreshold,
     nodata_val,
@@ -418,7 +418,7 @@ def analyze_xnelev(
     Args:
         df_xn_elev:
         param_ivert:
-        xn_ptdist:
+        cell_size:
         param_ratiothreshold:
         param_slpthreshold:
         nodata_val:
@@ -532,12 +532,12 @@ def analyze_xnelev(
                         xn_length,
                         thisxn_norm,
                         param_ivert,
-                        xn_ptdist,
+                        cell_size,
                         logger,
                     )
 
                     # Estimate bankfull area:
-                    # (Bank height - xn_elev_norm[i])*xn_ptdist
+                    # (Bank height - xn_elev_norm[i])*cell_size
                     # Round up on left, round down on right
                     CA_1D = 0
                     lst_bf_rng = range(
@@ -545,10 +545,10 @@ def analyze_xnelev(
                     )
 
                     for i in lst_bf_rng:
-                        CA_1D += (tpl_bankfullpts[3] - thisxn_norm[i]) * xn_ptdist
+                        CA_1D += (tpl_bankfullpts[3] - thisxn_norm[i]) * cell_size
 
                     # Channel width:
-                    ch_width = (tpl_bankfullpts[2] - tpl_bankfullpts[1]) * xn_ptdist
+                    ch_width = (tpl_bankfullpts[2] - tpl_bankfullpts[1]) * cell_size
 
                     # Overbank ratio:
                     try:
@@ -563,7 +563,7 @@ def analyze_xnelev(
                         total_arearatio = -9999.0
                     else:
                         # Also try area under entire Xn length relative to BF area:
-                        total_xn_area = sum(thisxn_norm * xn_ptdist)
+                        total_xn_area = sum(thisxn_norm * cell_size)
                         try:
                             total_arearatio = (total_xn_area - CA_1D) / CA_1D
                         except:
@@ -618,7 +618,7 @@ def chanmetrics_bankpts(
     dem,
     bank_points,
     parm_ivert,
-    XnPtDist,
+    cell_size,
     parm_ratiothresh,
     parm_slpthresh,
     epsg,
@@ -634,7 +634,7 @@ def chanmetrics_bankpts(
         dem:
         bank_points:
         parm_ivert:
-        XnPtDist:
+        cell_size:
         parm_ratiothresh:
         parm_slpthresh:
         logger:
@@ -708,7 +708,7 @@ def chanmetrics_bankpts(
                     analyze_xnelev(
                         df_xn_elev_n,
                         parm_ivert,
-                        XnPtDist,
+                        cell_size,
                         parm_ratiothresh,
                         parm_slpthresh,
                         nodata_val,
@@ -754,7 +754,6 @@ def chanmetrics_bankpts(
                 )
 
                 for tpl_row in df_map.itertuples():
-
                     tpl_left = (tpl_row.lfbank_x, tpl_row.lfbank_y)
                     tpl_right = (tpl_row.rtbank_x, tpl_row.rtbank_y)
 
@@ -792,7 +791,7 @@ def chanmetrics_bankpts(
                     bankpts.write({"geometry": rt_pt, "properties": prop_rt})
 
 
-def read_xns_shp_and_get_dem_window(channel_xns, dem, logger):
+def read_xns_shp_and_get_dem_window(elevation_profiles, channel_xns, dem, logger):
     """
     Read an existing Xn file, calculate xy bounds for each linkno and read the DEM
      according to that window
@@ -804,157 +803,162 @@ def read_xns_shp_and_get_dem_window(channel_xns, dem, logger):
 
     Returns:
     """
-    min_nodata_thresh = -99999.0
-    max_nodata_thresh = 99999.0
+    if not elevation_profiles.is_file():
+        min_nodata_thresh = -9999.0
+        max_nodata_thresh = 9999.0
 
-    logger.info("Reading and interpolating elevation along Xn's:")
+        logger.info("Reading and interpolating elevation along Xn's:")
 
-    lst_linknos = []
-    lst_x1 = []
-    lst_y1 = []
-    lst_x2 = []
-    lst_y2 = []
-    lst_strmord = []
+        lst_linknos = []
+        lst_x1 = []
+        lst_y1 = []
+        lst_x2 = []
+        lst_y2 = []
+        lst_strmord = []
 
-    #    start_time = timeit.default_timer()
-    # First get all linknos:
-    with fiona.open(channel_xns, "r") as xn_shp:
-        # Read each feature line:
-        for line in xn_shp:
-            lst_linknos.append(line["properties"]["LINKNO"])
-            lst_x1.append(line["geometry"]["coordinates"][0][0])
-            lst_y1.append(line["geometry"]["coordinates"][0][1])
-            lst_x2.append(line["geometry"]["coordinates"][1][0])
-            lst_y2.append(line["geometry"]["coordinates"][1][1])
-            lst_strmord.append(line["properties"]["strmord"])
+        #    start_time = timeit.default_timer()
+        # First get all linknos:
+        with fiona.open(channel_xns, "r") as xn_shp:
+            # Read each feature line:
+            for line in xn_shp:
+                lst_linknos.append(line["properties"]["LINKNO"])
+                lst_x1.append(line["geometry"]["coordinates"][0][0])
+                lst_y1.append(line["geometry"]["coordinates"][0][1])
+                lst_x2.append(line["geometry"]["coordinates"][1][0])
+                lst_y2.append(line["geometry"]["coordinates"][1][1])
+                lst_strmord.append(line["properties"]["strmord"])
 
-    df_coords = pd.DataFrame(
-        {
-            "LINKNO": lst_linknos,
-            "x1": lst_x1,
-            "y1": lst_y1,
-            "x2": lst_x2,
-            "y2": lst_y2,
-            "strmord": lst_strmord,
-        }
-    )
-
-    # Now loop over the linknos to get access grid by window:
-    with rasterio.open(dem) as ds_dem:
-
-        nodata_val = (
-            ds_dem.nodata
-        )  # NODATA val must be defined for this to return anything
-
-        # Get bounds of DEM (left, bottom, right, top):
-        bnds = ds_dem.bounds
-
-        # Check the min and max of the coordinates in df_coords-
-        # -and remove any cross-sections that extend beyond DEM:
-        df_coords["min_x"] = df_coords[["x1", "x2"]].min(axis=1)
-        df_coords["max_x"] = df_coords[["x1", "x2"]].max(axis=1)
-        df_coords["min_y"] = df_coords[["y1", "y2"]].min(axis=1)
-        df_coords["max_y"] = df_coords[["y1", "y2"]].max(axis=1)
-
-        # check min/max_x against bnds[0] and bnds[2] and min/max_y against bnds[1] and bnds[3]
-        # min_x > bnds[0], max_x < bnds[2], min_y > bnds[1], max_y < bnds[3]
-
-        df_coords = df_coords[
-            (df_coords["min_x"] > bnds[0])
-            & (df_coords["max_x"] < bnds[2])
-            & (df_coords["min_y"] > bnds[1])
-            & (df_coords["max_y"] < bnds[3])
-        ]
-        # clean columns
-        df_coords = df_coords.drop(["min_x", "max_x", "min_y", "max_y"], axis=1)
-
-        # Transform to pixel space
-        df_coords["col1"], df_coords["row1"] = ~ds_dem.transform * (
-            df_coords["x1"],
-            df_coords["y1"],
-        )
-        df_coords["col2"], df_coords["row2"] = ~ds_dem.transform * (
-            df_coords["x2"],
-            df_coords["y2"],
+        df_coords = pd.DataFrame(
+            {
+                "LINKNO": lst_linknos,
+                "x1": lst_x1,
+                "y1": lst_y1,
+                "x2": lst_x2,
+                "y2": lst_y2,
+                "strmord": lst_strmord,
+            }
         )
 
-        ## OR:
-        gp_coords = df_coords.groupby("LINKNO")
+        # Now loop over the linknos to get access grid by window:
+        with rasterio.open(dem) as ds_dem:
 
-        lst_all_zi = []
-        j = 0
+            nodata_val = (
+                ds_dem.nodata
+            )  # NODATA val must be defined for this to return anything
 
-        for linkno, df_linkno in gp_coords:
-            row_min = int(df_linkno[["row1", "row2"]].min(axis=0).min())
-            row_max = int(df_linkno[["row1", "row2"]].max(axis=0).max())
-            col_min = int(df_linkno[["col1", "col2"]].min(axis=0).min())
-            col_max = int(df_linkno[["col1", "col2"]].max(axis=0).max())
-            strmord = int(df_linkno.strmord.iloc[0])
+            # Get bounds of DEM (left, bottom, right, top):
+            bnds = ds_dem.bounds
 
-            # Now get the DEM specified by this window as a numpy array:
-            w = ds_dem.read(1, window=((row_min, row_max + 1), (col_min, col_max + 1)))
+            # Check the min and max of the coordinates in df_coords-
+            # -and remove any cross-sections that extend beyond DEM:
+            df_coords["min_x"] = df_coords[["x1", "x2"]].min(axis=1)
+            df_coords["max_x"] = df_coords[["x1", "x2"]].max(axis=1)
+            df_coords["min_y"] = df_coords[["y1", "y2"]].min(axis=1)
+            df_coords["max_y"] = df_coords[["y1", "y2"]].max(axis=1)
 
-            w_min = np.min(w)
-            w_max = np.max(w)
+            # check min/max_x against bnds[0] and bnds[2] and min/max_y against bnds[1] and bnds[3]
+            # min_x > bnds[0], max_x < bnds[2], min_y > bnds[1], max_y < bnds[3]
 
-            if w_min < min_nodata_thresh:
-                nodata_val = w_min
-            elif w_max > max_nodata_thresh:
-                nodata_val = w_max
+            df_coords = df_coords[
+                (df_coords["min_x"] > bnds[0])
+                & (df_coords["max_x"] < bnds[2])
+                & (df_coords["min_y"] > bnds[1])
+                & (df_coords["max_y"] < bnds[3])
+            ]
+            # clean columns
+            df_coords = df_coords.drop(["min_x", "max_x", "min_y", "max_y"], axis=1)
 
-            # NOW loop over each Xn:
-            for tpl_xn in df_linkno.itertuples():
-                j += 1
-                xn_len = int(
-                    np.hypot(tpl_xn.col2 - tpl_xn.col1, tpl_xn.row2 - tpl_xn.row1)
-                )
-                lst_xnrow = np.linspace(
-                    tpl_xn.row1 - row_min, tpl_xn.row2 - row_min, xn_len
-                )
-                lst_xncol = np.linspace(
-                    tpl_xn.col1 - col_min, tpl_xn.col2 - col_min, xn_len
-                )
+            # Transform to pixel space
+            df_coords["col1"], df_coords["row1"] = ~ds_dem.transform * (
+                df_coords["x1"],
+                df_coords["y1"],
+            )
+            df_coords["col2"], df_coords["row2"] = ~ds_dem.transform * (
+                df_coords["x2"],
+                df_coords["y2"],
+            )
 
-                # this is always 1 cell or equivalent to cell_size in meters/feet
-                # xnptdist = xn_len/len(lst_xnrow)
-                try:
-                    arr_zi = w[
-                        lst_xnrow.astype(int), lst_xncol.astype(int)
-                    ]  # nearest-neighbor
-                except:
-                    continue
+            ## OR:
+            gp_coords = df_coords.groupby("LINKNO")
 
-                # Remove possible no data values:NOTE:  They may not be defined in the original file
-                arr_zi = arr_zi[arr_zi != np.float32(nodata_val)]
+            lst_all_zi = []
+            j = 0
 
-                # if it only has less than 5 elevation measurements along this Xn, skip it
-                if arr_zi.size < 5:
-                    continue
+            for linkno, df_linkno in gp_coords:
+                row_min = int(df_linkno[["row1", "row2"]].min(axis=0).min())
+                row_max = int(df_linkno[["row1", "row2"]].max(axis=0).max())
+                col_min = int(df_linkno[["col1", "col2"]].min(axis=0).min())
+                col_max = int(df_linkno[["col1", "col2"]].max(axis=0).max())
+                strmord = int(df_linkno.strmord.iloc[0])
 
-                # Convert these from window row/col to raster row/col for bankpt use:
-                for i, xnrow in enumerate(lst_xnrow):
-                    lst_xnrow[i] = lst_xnrow[i] + row_min
-                    lst_xncol[i] = lst_xncol[i] + col_min
+                # Now get the DEM specified by this window as a numpy array:
+                w = ds_dem.read(1, window=((row_min, row_max + 1), (col_min, col_max + 1)))
 
-                tpl_out = (linkno, arr_zi, lst_xnrow, lst_xncol, strmord)
-                lst_all_zi.append(tpl_out)
+                w_min = np.min(w)
+                w_max = np.max(w)
 
-    # print('\tTotal Xn\'s:  {}'.format(i))
-    # print('\tTime interpolating elevation along Xn\'s:'+ str(timeit.default_timer()-start_time))
+                if w_min < min_nodata_thresh:
+                    nodata_val = w_min
+                elif w_max > max_nodata_thresh:
+                    nodata_val = w_max
 
-    return pd.DataFrame(
-        lst_all_zi, columns=["LINKNO", "elev", "xn_row", "xn_col", "strmord"]
-    )
+                # NOW loop over each Xn:
+                for tpl_xn in df_linkno.itertuples():
+                    j += 1
+                    xn_len = int(
+                        np.hypot(tpl_xn.col2 - tpl_xn.col1, tpl_xn.row2 - tpl_xn.row1)
+                    )
+                    lst_xnrow = np.linspace(
+                        tpl_xn.row1 - row_min, tpl_xn.row2 - row_min, xn_len
+                    )
+                    lst_xncol = np.linspace(
+                        tpl_xn.col1 - col_min, tpl_xn.col2 - col_min, xn_len
+                    )
+
+                    # this is always 1 cell or equivalent to cell_size in meters/feet
+                    # xnptdist = xn_len/len(lst_xnrow)
+                    try:
+                        arr_zi = w[
+                            lst_xnrow.astype(int), lst_xncol.astype(int)
+                        ]  # nearest-neighbor
+                    except:
+                        continue
+
+                    # Remove possible no data values:NOTE:  They may not be defined in the original file
+                    arr_zi = arr_zi[arr_zi != np.float32(nodata_val)]
+
+                    # if it only has less than 5 elevation measurements along this Xn, skip it
+                    if arr_zi.size < 5:
+                        continue
+
+                    # Convert these from window row/col to raster row/col for bankpt use:
+                    for i, xnrow in enumerate(lst_xnrow):
+                        lst_xnrow[i] = lst_xnrow[i] + row_min
+                        lst_xncol[i] = lst_xncol[i] + col_min
+
+                    tpl_out = (linkno, arr_zi, lst_xnrow, lst_xncol, strmord)
+                    lst_all_zi.append(tpl_out)
+
+        # print('\tTotal Xn\'s:  {}'.format(i))
+        # print('\tTime interpolating elevation along Xn\'s:'+ str(timeit.default_timer()-start_time))
+
+        df = pd.DataFrame(
+            lst_all_zi, columns=["LINKNO", "elev", "xn_row", "xn_col", "strmord", "xn_num"]
+        )
+
+        df.to_parquet(elevation_profiles)
+
+    else:
+        df = pd.read_parquet(elevation_profiles)
+
+    return df
 
 
-def derive(channel_xns, dem, bank_points, params, epsg, logger):
-    XnPtDist = 1 # same as resolution
 
+def derive(cell_size, elevation_profiles, channel_xns, dem, bank_points, params, epsg, logger):
     # channel_xns, dem, bank_points, params, epsg = Paths.channel_xns, Paths.dem, Paths.bank_points, Config.methods['cross_section'], Config.spatial_ref['epsg']
 
-    df_xn_elev = read_xns_shp_and_get_dem_window(channel_xns, dem, logger)
-    # df_xn_elev.to_csv(str_csv_path)
-
+    df_xn_elev = read_xns_shp_and_get_dem_window(elevation_profiles, channel_xns, dem, logger)
 
     chanmetrics_bankpts(
         df_xn_elev,
@@ -962,7 +966,7 @@ def derive(channel_xns, dem, bank_points, params, epsg, logger):
         dem,
         bank_points,
         params['parm_ivert'],
-        XnPtDist,
+        cell_size,
         params['parm_ratiothresh'],
         params['parm_slpthresh'],
         epsg,

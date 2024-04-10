@@ -18,35 +18,24 @@ and stream slope from DEMs.
 ------------------------------------------------------------------------------
 """
 from timeit import default_timer as timer
-
 from pathlib import Path
 
-from utils import parse_toml, utils
-from utils.batch import generate_processing_batch
-from preprocessing import preprocess, cross_sections, network_smoothing
-from metrics import channel_cross_section_metrics as channel_metrics
-from metrics import channel_curvature_metrics as curvature_metrics
-from metrics import flood_inundation_map as fim
-from metrics import floodplain_metrics
+from src.utils import parse_toml, utils
+from src.utils.batch import generate_processing_batch
+from src.preprocessing import preprocess, cross_sections, network_smoothing
+from src.metrics import channel_cross_section_metrics as channel_metrics
+from src.metrics import channel_curvature_metrics as curvature_metrics
+from src.metrics import flood_inundation_map as fim
+from src.metrics import floodplain_metrics
 
-# debug
-from postprocessing import spatial_qc as qc
-# from src.utils import parse_toml, utils
-# from src.utils.batch import generate_processing_batch
-# from src.preprocessing import preprocess, cross_sections, network_smoothing
-# from src.metrics import channel_cross_section_metrics as channel_metrics 
-# from src.metrics import channel_curvature_metrics as curvature_metrics 
-# from src.metrics import flood_inundation_map as fim
-# from src.metrics import floodplain_metrics
-
+from src.postprocessing import spatial_qc as qc
 
 # Debug WBT compile issue only on WSL Ubuntu 20.0
 # whitebox.download_wbt(linux_musl=True, reset=True)
 
-
 if __name__ == "__main__":
 
-    config_toml = Path("src/config.toml")
+    config_toml = Path("src/config_test.toml")
     fpaths_toml = Path("src/utils/filepaths.toml")
 
     # step 1
@@ -56,7 +45,6 @@ if __name__ == "__main__":
     hucs = generate_processing_batch(Config.batch_csv)
 
     for huc in hucs:
-
         # step 3
         Paths = parse_toml.create_filepaths(fpaths_toml, Config, huc)
 
@@ -65,9 +53,9 @@ if __name__ == "__main__":
         # logging
         logger = utils.initialize_logger(Paths.log)
 
-        # Paths_dict = parse_toml.class_to_dict(Paths)
+        Paths_dict = parse_toml.class_to_dict(Paths)
         # for k,v in Paths_dict.items():
-        #     print(v)
+        #     print(k,v)
 
         # start HUC processing time
         start = timer()
@@ -83,19 +71,31 @@ if __name__ == "__main__":
         # network_smoothing.apply_chaikins_corner_cutting(Paths.network_poly, smooth_network, refinements=3)
         # Paths.network_poly = smooth_network
 
-        cross_sections.generate(Config, Paths, cell_size=1)
+        # Generate cross-sections
+        cross_sections.generate(Config, Paths)
 
         # 1D Channel Cross-section Metrics
         channel_metrics.derive(
-            Paths.channel_xns, Paths.dem, Paths.bank_points,
-            Config.methods['cross_section'], Config.spatial_ref['epsg'], logger
+            Config.methods['cross_section']['cell_size'],
+            Paths.elevation_profiles,
+            Paths.channel_xns,
+            Paths.dem,
+            Paths.bank_points,
+            Config.methods['cross_section'],
+            Config.spatial_ref['epsg'],
+            logger
             )
 
         # Channel Curvature Metrics
         curvature_metrics.derive(
-            Paths.xn_coordinates, Paths.dem, Paths.bank_pixels, 
-            Config.spatial_ref['cell_size'], Config.methods['curvature'], Paths.network_poly,
-            Paths.channel_segs, logger
+            Paths.xn_coordinates, 
+            Paths.denoise, 
+            Paths.bank_pixels, 
+            Config.spatial_ref['cell_size'], 
+            Config.methods['curvature'], 
+            Paths.network_poly,
+            Paths.channel_segs, 
+            logger
             )
 
         # delineate flood inundation layer
@@ -127,26 +127,26 @@ if __name__ == "__main__":
         #     Config.xn_lengths["floodplain"], logger
         # )
 
-
+        # Quality Checks against NHD
         flowline_mask = qc.create_flowline_qc_mask(
             Paths.flowlines, 
             Config.postprocess['stream-buffer'], 
             Paths.watershed
         )
-        
+
         waterbody_mask = qc.create_waterbody_qc_mask(
             Config.ancillary['nhd_wbds'],
             [390, 436], 
             Paths.watershed
             )
-        
+
         # flag bankpoints:
         bank_points_qc = utils.vector_to_geodataframe(Paths.bank_points)
         bank_points_qc = qc.flag_features_by_qc_mask(
             bank_points_qc, flowline_mask, "NHD_Flag", "xn_num"
             )
         bank_points_qc = qc.flag_features_by_qc_mask(
-            bank_points_qc, waterbody_mask, "WBD_Flag", "xn_num", output=Paths.pp_bank_points
+            bank_points_qc, waterbody_mask, "WBD_Flag", "xn_num", output=Paths.bank_points
             )
 
         # flag channel segs:
@@ -156,7 +156,7 @@ if __name__ == "__main__":
             channel_segs_qc, flowline_mask, "NHD_Flag"
             )
         channel_segs_qc = qc.flag_features_by_qc_mask(
-            channel_segs_qc, waterbody_mask, "WBD_Flag", output=Paths.pp_channel_segs
+            channel_segs_qc, waterbody_mask, "WBD_Flag", output=Paths.channel_segs
             )
 
         # flag floodplain xns:
@@ -166,5 +166,5 @@ if __name__ == "__main__":
             floodplain_xns_qc, flowline_mask, "NHD_Flag"
             )
         floodplain_xns_qc = qc.flag_features_by_qc_mask(
-            floodplain_xns_qc, waterbody_mask, "WBD_Flag", output=Paths.pp_floodplain_xns
+            floodplain_xns_qc, waterbody_mask, "WBD_Flag", output=Paths.floodplain_xns
             )

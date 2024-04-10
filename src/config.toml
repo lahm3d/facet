@@ -14,7 +14,6 @@ version = "test-01" # short description of version
 
 [spatial_ref]
 epsg = "5070"
-crs = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
 cell_size = 1
 
 [preprocess]
@@ -29,7 +28,7 @@ preprocess = true
     num_iter = 3
 
     [preprocess.breach_depression_least_cost]
-    dist = 300 # maximum search distance for breach paths in cells
+    dist = 200 # maximum search distance for breach paths in cells
     min_dist = false
     fill = false
 
@@ -39,12 +38,14 @@ preprocess = true
 
     [preprocess.taudem]
     cores = 2
-    resample = 3
 
 [xn_lengths]
+    xn_gap = 5
+    xn_slope_vertical_cutoff = 20
+
     [xn_lengths.channel]
     "1".xn_len = 20
-    "1".pf_len = 3
+    "1".pf_len = 2
     "2".xn_len = 23
     "2".pf_len = 6
     "3".xn_len = 40
@@ -63,9 +64,9 @@ preprocess = true
     "2".pf_len = 8
     "3".xn_len = 100
     "3".pf_len = 12
-    "4".xn_len = 150
+    "4".xn_len = 200
     "4".pf_len = 20
-    "5".xn_len = 200
+    "5".xn_len = 300
     "5".pf_len = 30
     "6".xn_len = 500
     "6".pf_len = 40
@@ -76,13 +77,10 @@ preprocess = true
     parm_ivert = 0.2
     parm_ratiothresh = 1.5
     parm_slpthresh = 0.03
-    p_xngap = 10
+    p_xngap = 3
+    cell_size = 1 # based on resolution
 
     [methods.curvature]
-    # note: for stream orders 5 & 6 the respective windows dimensions increase to 40x40 and 80x80
-    # this is hardcoded
-    win_height = 20 #rows 
-    win_width = 20 #cols
     buffer = 3 # no. of cells
     curve_threshold = 0.30 # 3m DEM
     minimum_window_size = 9
@@ -90,6 +88,20 @@ preprocess = true
     # method = "mean"
     i_step = 100
     max_buff = 30
+
+        [methods.curvature.windows]
+        "1".window_height = 20
+        "1".window_width  = 20
+        "2".window_height = 20
+        "2".window_width  = 20
+        "3".window_height = 20
+        "3".window_width  = 20
+        "4".window_height = 20
+        "4".window_width  = 20
+        "5".window_height = 40
+        "5".window_width  = 40
+        "6".window_height = 80
+        "6".window_width  = 80
 
     [methods.flood_thresholds]
     # units sq kilometers

@@ -87,9 +87,7 @@ def hydro_condition_dem(Config, Paths, logger):
         Paths.denoise,
         Paths.breach,
         dist=Config.preprocess['breach_depression_least_cost']['dist'],
-        # max_cost=Config.preprocess['breach_depression_least_cost']['max_cost'],
-        min_dist=None,
-        fill=None,
+        fill=Config.preprocess['breach_depression_least_cost']['fill'],
     )
 
     logger.info("Depressions breached")
@@ -112,7 +110,7 @@ def create_weight_grid_from_streamlines(
         flowlines = gpd.read_file(flowlines)
         mask = utils.vector_to_geodataframe(watershed)
 
-        mask['geometry'] = mask.geometry.buffer(-0.2)
+        mask['geometry'] = mask.geometry.buffer(-1.0)
         clip = gpd.clip(flowlines, mask)
 
         end_nodes = []
