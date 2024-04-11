@@ -89,7 +89,7 @@ if __name__ == "__main__":
         # Channel Curvature Metrics
         curvature_metrics.derive(
             Paths.xn_coordinates, 
-            Paths.denoise, 
+            Paths.dem, 
             Paths.bank_pixels, 
             Config.spatial_ref['cell_size'], 
             Config.methods['curvature'], 

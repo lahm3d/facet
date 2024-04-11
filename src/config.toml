@@ -29,9 +29,8 @@ preprocess = true
 
     [preprocess.breach_depression_least_cost]
     dist = 200 # maximum search distance for breach paths in cells
-    min_dist = false
-    fill = false
-
+    fill = true
+    
     [preprocess.reach-order]
     reach_id = "LINKNO"
     order_id = "strmOrder"
