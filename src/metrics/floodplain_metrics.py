@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage import label
 
-from preprocessing.cross_sections import build_xns
-from utils import utils
+from src.preprocessing.cross_sections import build_xns
+from src.utils import utils
 
 def fp_metrics_chsegs(flood_extent_layer, ch_width_id, channel_segs, xn_type, logger):
     """

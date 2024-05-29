@@ -1,6 +1,6 @@
 import geopandas as gpd
 import numpy as np
-from utils import utils
+from src.utils import utils
 
 def create_flowline_qc_mask(flowlines, buffer, watershed):
 

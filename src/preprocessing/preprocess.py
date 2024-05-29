@@ -10,7 +10,7 @@ import rasterio
 from shapely.geometry import Point
 import subprocess
 import numpy as np
-from utils import utils
+from src.utils import utils
 
 def clip_flowlines(flowlines, mask, output, logger):
 
