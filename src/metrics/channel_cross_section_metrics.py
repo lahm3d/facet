@@ -943,7 +943,7 @@ def read_xns_shp_and_get_dem_window(elevation_profiles, channel_xns, dem, logger
         # print('\tTime interpolating elevation along Xn\'s:'+ str(timeit.default_timer()-start_time))
 
         df = pd.DataFrame(
-            lst_all_zi, columns=["LINKNO", "elev", "xn_row", "xn_col", "strmord", "xn_num"]
+            lst_all_zi, columns=["LINKNO", "elev", "xn_row", "xn_col", "strmord"]
         )
 
         df.to_parquet(elevation_profiles)
