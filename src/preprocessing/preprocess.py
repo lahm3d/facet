@@ -50,8 +50,8 @@ def merge_rails_and_roads(aoi_rails, aoi_roads, mask, output, logger):
         )
         road_rail_crossings.to_file(output)
         logger.info("Roads and rails merged")
-
-    logger.info("Roads and rails layer already exists. Skipping step")
+    else:
+        logger.info("Roads and rails layer already exists. Skipping step")
 
 
 def hydro_condition_dem(Config, Paths, logger):
