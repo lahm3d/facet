@@ -11,6 +11,7 @@ from shapely.geometry import Point
 import subprocess
 import numpy as np
 from src.utils import utils
+import time
 
 def clip_flowlines(flowlines, mask, output, logger):
 

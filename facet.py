@@ -17,7 +17,7 @@ and stream slope from DEMs.
 
 ------------------------------------------------------------------------------
 """
-from timeit import default_timer as timer
+import time
 from pathlib import Path
 
 from src.utils import parse_toml, utils
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         #     print(k,v)
 
         # start HUC processing time
-        start = timer()
+        start = time.time()
 
         logger.info(f"Running {huc}...")
 
@@ -168,3 +168,4 @@ if __name__ == "__main__":
         floodplain_xns_qc = qc.flag_features_by_qc_mask(
             floodplain_xns_qc, waterbody_mask, "WBD_Flag", output=Paths.floodplain_xns
             )
+        logger.info(f"Total run time: {round((time.time() - start) / 60, 2)} mins")
