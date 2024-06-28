@@ -15,22 +15,23 @@ import time
 
 def clip_flowlines(flowlines, mask, output, logger):
 
-    aoi_flowlines = utils.vector_to_geodataframe(flowlines)
-    mask = utils.vector_to_geodataframe(mask)
-    flowlines = aoi_flowlines.clip(mask)
+    if not output.is_file():
+        aoi_flowlines = utils.vector_to_geodataframe(flowlines)
+        mask = utils.vector_to_geodataframe(mask)
+        flowlines = aoi_flowlines.clip(mask)
 
-    try:
-        flowlines.to_file(output)
-        logger.info("NHD Flowlines clipped")
-    except fiona.errors.DriverSupportError as e:
-        logger.info(f"Error encountered while writing the flowline file: {e}")
-        # datetime64 not supported by Esri Shapefile, so column will be dropped
-        new_columns = [
-            col for col in flowlines.columns if flowlines[col].dtype != 'datetime64[ms, UTC]'
-            ]
-        flowlines = flowlines[new_columns]
-        flowlines.to_file(output)
-        logger.info("NHD Flowlines clipped")
+        try:
+            flowlines.to_file(output)
+            logger.info("NHD Flowlines clipped")
+        except fiona.errors.DriverSupportError as e:
+            logger.info(f"Error encountered while writing the flowline file: {e}")
+            # datetime64 not supported by Esri Shapefile, so column will be dropped
+            new_columns = [
+                col for col in flowlines.columns if flowlines[col].dtype != 'datetime64[ms, UTC]'
+                ]
+            flowlines = flowlines[new_columns]
+            flowlines.to_file(output)
+            logger.info("NHD Flowlines clipped")
 
 
 def merge_rails_and_roads(aoi_rails, aoi_roads, mask, output, logger):
@@ -66,32 +67,46 @@ def hydro_condition_dem(Config, Paths, logger):
         logger,
     )
 
-    wbt.burn_streams_at_roads(
-        Paths.dem, 
-        Paths.flowlines, 
-        Paths.road_rail_crossings, 
-        Paths.burn_crossings, 
-        width=Config.preprocess['burn_stream_at_roads']['width'], 
-    )
-    logger.info("Streams near roads burned")
+    if not Paths.burn_crossings.is_file():
+        start = time.time()
+        wbt.burn_streams_at_roads(
+            Paths.dem, 
+            Paths.flowlines, 
+            Paths.road_rail_crossings, 
+            Paths.burn_crossings, 
+            width=Config.preprocess['burn_stream_at_roads']['width'], 
+        )
+        run_time = round((time.time() - start) / 60, 2)
+        logger.info(f"Streams near roads burned. Run-time: {run_time} mins")
+    else:
+        logger.info("Streams near roads burned -- already exist!")
 
-    wbt.feature_preserving_smoothing(
-        Paths.burn_crossings, 
-        Paths.denoise, 
-        filter=Config.preprocess['denoise']['filter_size'], 
-        norm_diff=Config.preprocess['denoise']['norm_diff'], 
-        num_iter=Config.preprocess['denoise']['num_iter'], 
-    )
-    logger.info("Feature preserving smoothing (denoising) performed")
+    if not Paths.denoise.is_file():
+        start = time.time()
+        wbt.feature_preserving_smoothing(
+            Paths.burn_crossings, 
+            Paths.denoise, 
+            filter=Config.preprocess['denoise']['filter_size'],
+            norm_diff=Config.preprocess['denoise']['norm_diff'],
+            num_iter=Config.preprocess['denoise']['num_iter'],
+        )
+        run_time = round((time.time() - start) / 60, 2)
+        logger.info(f"Feature preserving smoothing (denoising) performed. Run-time: {run_time} mins")
+    else:
+        logger.info("Feature preserving smoothing (denoising) performed -- already exist!")
 
-    wbt.breach_depressions_least_cost(
-        Paths.denoise,
-        Paths.breach,
-        dist=Config.preprocess['breach_depression_least_cost']['dist'],
-        fill=Config.preprocess['breach_depression_least_cost']['fill'],
-    )
-
-    logger.info("Depressions breached")
+    if not Paths.breach.is_file():
+        start = time.time()
+        wbt.breach_depressions_least_cost(
+            Paths.denoise,
+            Paths.breach,
+            dist=Config.preprocess['breach_depression_least_cost']['dist'],
+            fill=Config.preprocess['breach_depression_least_cost']['fill'],
+        )
+        run_time = round((time.time() - start) / 60, 2)
+        logger.info(f"Depressions breached. Run-time: {run_time} mins")
+    else:
+        logger.info("Depressions breached -- already exist!")
 
 
 def create_weight_grid_from_streamlines(
@@ -113,6 +128,8 @@ def create_weight_grid_from_streamlines(
 
         mask['geometry'] = mask.geometry.buffer(-1.0)
         clip = gpd.clip(flowlines, mask)
+        # multilinestrings get converted to linestrings
+        clip = clip.explode(index_parts=True)
 
         end_nodes = []
         start_nodes= []
