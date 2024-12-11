@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 import subprocess
+from osgeo import gdal
 import rasterio
 import geopandas as gpd
 import fsspec
