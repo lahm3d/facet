@@ -1,7 +1,6 @@
 name: facet
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - aiohttp
   - geopandas
@@ -11,10 +10,11 @@ dependencies:
   - pandas
   - plotly
   - pyarrow
-  - python=
-  - rasterio
+  - python
+  - gdal=3.6.4
+  - rasterio=1.3.7
   - requests
   - scipy
   - shapely
-  # - taudem=5.3.8
+  - taudem=5.3.8
   - whitebox
