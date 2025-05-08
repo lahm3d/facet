@@ -1,4 +1,7 @@
+[hucs]
 batch_csv = "c:/chesapeake_bay/sample_data/batch.csv"
+
+huc = "None"
 
 [ancillary]
 data = "c:/chesapeake_bay/sample_data"
