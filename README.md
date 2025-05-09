@@ -39,7 +39,8 @@ Before getting started download the following softwares/applications (instructio
 Open the config file located `C:/.../facet/src/config.toml` in any text editor (**use forward slash '/' for all file paths in the config**
 ):
 
--`batch_csv` : custom csv file where you can enter huc-id numbers to process, and to skip. Use the `facet/batch.csv` template file and modify as needed. It does not matter where the file is located.
+-`batch_csv` : Either "None" or a custom csv file where you can enter huc-id numbers to process, and to skip. Use the `facet/batch.csv` template file and modify as needed. It does not matter where the file is located.
+-`huc`: Either "None" or a HUC code to process if a CSV file is not provided
 
 - `ancillary`: 
         - Input paths for all the ancillary data which have been converted to geoparquet and stored on s3. **Use the default paths for the files.**
@@ -50,6 +51,7 @@ Open the config file located `C:/.../facet/src/config.toml` in any text editor (
         - `nhd_physiography`: Physiography file
         - `census_roads`: Census 2023 roads
         - `census_rails`: Census 2023 rails
+		- `cutlines`: Optional vector of cutlines to burn into DEM
 
 
 
@@ -60,7 +62,8 @@ Modify the config file by navigating to `/.../facet/src/config.toml` (see below 
 
 Navigate to `facet/src/config.toml` and edit the following values:
 
-`batch_csv` : custom csv file where you can enter huc-id numbers to process, and to skip. Use the `facet/batch.csv` template file and modify as needed
+`batch_csv` : Either "None" or a custom csv file where you can enter huc-id numbers to process, and to skip. Use the `facet/batch.csv` template file and modify as needed. It does not matter where the file is located.
+`huc`: Either "None" or a HUC code to process if a CSV file is not provided
 
 `ancillary`: Input paths for all the ancillary data which have been converted to geoparquet and stored on s3. Use the default paths for the files.
 
@@ -68,11 +71,18 @@ Navigate to `facet/src/config.toml` and edit the following values:
 
 `debug` and `version` allows users to run facet multiple times with parameter settings. If you want to run facet with two separate settings then you can modify the `version` variable to a descriptive string
 
+`preprocess.burn_cutlines_flag`: determines whether cutlines will be burned into DEM, true or false
+
+`preprocess.burn_stream_at_roads_flag`: determines whether DEM will be burned where roads/rails cross streams, true or false
 `preprocess.burn_stream_at_roads`: no. of cells to burn NHD streams near road + rail and stream intersections
 
+`preprocess.denoise_flag`: determines whether DEM will be denoised, true or false
 `preprocess.denoise`: Whitebox [feature preserving smoothing]() algorithm with defaults set
 
 `preprocess.breach_depression_least_cost`: Whitebox [Breach Depressions Least Cost](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/hydrological_analysis.html?highlight=breaching%20lease#breachdepressionsleastcost).
+
+`preprocess.taudem.network_method`: Determine whether stream initiation weights or drainage area thresholds are used to generate stream network, should be'area_threshold' or 'flowline_weights'
+`preprocess.taudem.threshold`: Drainage area threshold for stream network generation in number of cells (be cognizant of raster resolution)
 
 `xn_gap`: Gap between each cross-section. This is not consistent, usually for first ~2-4 cross-sections on every reach to ensure whole number of cross-sections are generated consistently.
 
@@ -116,7 +126,7 @@ To run facet, first open miniconda window:
 
         cd c:/folder-where-you-cloned-or-unzipped-facet-repo
         conda activate facet
-        python src/facet.py
+        python src/facet.py --config_toml "src/config_test.toml" --fpaths_toml "src/utils/filepaths.toml"
 
 
 ## Reporting bugs
