@@ -1,7 +1,6 @@
 [hucs]
-batch_csv = "c:/chesapeake_bay/sample_data/batch.csv"
-
-huc = "None"
+batch_csv = "c:/chesapeake_bay/sample_data/batch.csv" # Absolute filepath of a CSV containing a list of HUC codes to process, set to "None" if using a single HUC code
+huc = "None" # Single HUC code to use ("0401030204"), set to "None" is using a CSV of HUC codes
 
 [ancillary]
 data = "c:/chesapeake_bay/sample_data"
@@ -11,6 +10,7 @@ nhd_wbds = "https://gis-data.chesapeakebay.net/facet_misc_data/NHDPlus_HR_Waterb
 physiography = "https://gis-data.chesapeakebay.net/facet_misc_data/physiography_orig.parquet"
 census_roads = "https://gis-data.chesapeakebay.net/facet_misc_data/Census_roads_2023.parquet"
 census_rails = "https://gis-data.chesapeakebay.net/facet_misc_data/Census_rails_2023.parquet"
+cutlines = ""
 
 [debug]
 version = "test-01" # short description of version
@@ -20,12 +20,17 @@ epsg = "5070"
 cell_size = 1
 
 [preprocess]
-preprocess = true
-    
+preprocess_flag = true # A flag to determine whether preprocessing occurs (this variable is currently unused / not implemented)
+
+	[preprocess.burn_cutlines]
+	burn_cutlines_flag = true # Flag to determine whether cutlines are burned into the DEM for hydro-enforcement
+	
     [preprocess.burn_stream_at_roads]
+	burn_stream_at_roads_flag = false # Flag to determine whether rail/road crossings are breached at pre-defined streamlines for hydro-enforcement
     width = 100
 
     [preprocess.denoise]
+	denoise_flag = false # Flag to determine whether DEM denoising is desired (highly suggested for high-resolution DEMs that have not yet been denoised)
     filter_size = 11
     norm_diff = 10
     num_iter = 3
