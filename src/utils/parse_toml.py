@@ -48,7 +48,7 @@ class CreateFilepaths:
     paths: InitVar[dict]
     paths_mod: dict
     preprocess_flag: bool
-    preprocess_directory: str
+    preprocess_version: str
     
     def __post_init__(self, paths):
         if self.preprocess_flag == True:
@@ -81,9 +81,9 @@ class CreateFilepaths:
                 if stem in inputs:
                     parent = Path(self.folder) / self.huc
                     basename = f"{self.huc}_{stem}.{suffix}"
-                if key in preprocess:
-                    parent = Path(self.folder) / self.huc / self.preprocess_directory
-                    basename = f"{self.huc}_{stem}_{self.preprocess_directory}.{suffix}"
+                elif key in preprocess:
+                    parent = Path(self.folder) / self.huc / self.preprocess_version
+                    basename = f"{self.huc}_{stem}_{self.preprocess_version}.{suffix}"
                 else:
                     if self.version == "":
                         parent = Path(self.folder) / self.huc
@@ -122,7 +122,7 @@ def create_filepaths(paths_toml, config, huc):
         paths = paths,
         paths_mod = paths_mod, 
         preprocess_flag = config.preprocess['preprocess_flag'],
-        preprocess_directory = config.preprocess['preprocess_directory']
+        preprocess_version = config.preprocess['preprocess_version']
     )
 
     return Paths
