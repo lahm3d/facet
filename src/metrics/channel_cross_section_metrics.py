@@ -956,7 +956,34 @@ def read_xns_shp_and_get_dem_window(elevation_profiles, channel_xns, dem, logger
 
 
 def derive(cell_size, elevation_profiles, channel_xns, dem, bank_points, params, epsg, logger):
-    # channel_xns, dem, bank_points, params, epsg = Paths.channel_xns, Paths.dem, Paths.bank_points, Config.methods['cross_section'], Config.spatial_ref['epsg']
+    """
+    Entry function for deriving channel cross section metrics
+
+    Parameters
+    ----------
+    cell_size : Integer
+        The cell size of the DEM.
+    elevation_profiles : WindowPath object of pathlib module
+        Path to output the elevation profiles (a parquet file).
+    channel_xns : WindowPath object of pathlib module
+        Path to the channel cross sections (typically a *.shp file).
+    dem : WindowPath object of pathlib module
+        Path to the un-modified DEM (typically a *.tif file).
+    bank_points : WindowPath object of pathlib module
+        Path where the bank points will be written.
+    params : Dictionary
+        DESCRIPTION.
+    epsg : String
+        String specifying the European Petroleum Geospatial Group code defining
+        the output horizontal coordinate reference system
+    logger : Logger object of logging module
+        Logger writes processing information to text file.
+
+    Returns
+    -------
+    None.
+
+    """
 
     df_xn_elev = read_xns_shp_and_get_dem_window(elevation_profiles, channel_xns, dem, logger)
 

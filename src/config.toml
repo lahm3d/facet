@@ -20,8 +20,9 @@ epsg = "5070"
 cell_size = 1
 
 [preprocess]
-preprocess_flag = true # A flag to determine whether preprocessing occurs (this variable is currently unused / not implemented)
-
+preprocess_flag = false # A flag to determine whether preprocessing occurs
+preprocess_directory = 'test_network_delineation_method_2' # Name of alternative version where preprocess outputs are located if "preprocess_flag = true"
+    
 	[preprocess.burn_cutlines]
 	burn_cutlines_flag = true # Flag to determine whether cutlines are burned into the DEM for hydro-enforcement (true or false)
 	
