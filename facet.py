@@ -90,7 +90,7 @@ if __name__ == "__main__":
         # Paths.network_poly = smooth_network
 
         # Generate cross-sections
-        cross_sections.generate(Config, Paths)
+        cross_sections.generate(Config, Paths, logger)
 
         # 1D Channel Cross-section Metrics
         channel_metrics.derive(

@@ -793,22 +793,41 @@ def chanmetrics_bankpts(
 
 def read_xns_shp_and_get_dem_window(elevation_profiles, channel_xns, dem, logger):
     """
+    Generates elevation profiles along cross-section lines by reading in a cross-section
+    file (*.shp), calculating the minimum bounding rectangle of each line in the file,
+    and then reading in the bounding rectangle of the DEM.
+    
     Read an existing Xn file, calculate xy bounds for each linkno and read the DEM
      according to that window
 
-    Args:
-        channel_xns:
-        dem:
-        logger:
+    Parameters
+    ----------
+    elevation_profiles : WindowPath object of pathlib module
+        Path to parquet file where the cross-section elevation profiles will be written.
+    channel_xns : WindowPath object of pathlib module
+        Path to file containing the channel cross sections.
+    dem : WindowsPath object of pathlib module
+        Path to the input DEM which will be read in.
+    logger : Logger object of logging module
+        Logger writes processing information to text file.
 
-    Returns:
+
+    Returns
+    -------
+    df : Pandas DataFrtame
+        DataFrame containing columns with stream segment LINKNO, elevation profile,
+        cross-section row coordinates, cross-section column coordinates, ands stream
+        order.
+
     """
+
     if not elevation_profiles.is_file():
         min_nodata_thresh = -9999.0
         max_nodata_thresh = 9999.0
 
         logger.info("Reading and interpolating elevation along Xn's:")
 
+        # Create empty lists for storing link coordinates
         lst_linknos = []
         lst_x1 = []
         lst_y1 = []
@@ -816,18 +835,18 @@ def read_xns_shp_and_get_dem_window(elevation_profiles, channel_xns, dem, logger
         lst_y2 = []
         lst_strmord = []
 
-        #    start_time = timeit.default_timer()
-        # First get all linknos:
+        # Retrieve bounding rectangle coordinates for each line in channel xns shapefile:
         with fiona.open(channel_xns, "r") as xn_shp:
             # Read each feature line:
             for line in xn_shp:
-                lst_linknos.append(line["properties"]["LINKNO"])
-                lst_x1.append(line["geometry"]["coordinates"][0][0])
-                lst_y1.append(line["geometry"]["coordinates"][0][1])
-                lst_x2.append(line["geometry"]["coordinates"][1][0])
-                lst_y2.append(line["geometry"]["coordinates"][1][1])
-                lst_strmord.append(line["properties"]["strmord"])
+                lst_linknos.append( line["properties"]["LINKNO"] )
+                lst_x1.append( line["geometry"]["coordinates"][0][0] )
+                lst_y1.append( line["geometry"]["coordinates"][0][1] )
+                lst_x2.append( line["geometry"]["coordinates"][1][0] )
+                lst_y2.append( line["geometry"]["coordinates"][1][1] )
+                lst_strmord.append( line["properties"]["strmord"] )
 
+        # Create a dataframe from the lists
         df_coords = pd.DataFrame(
             {
                 "LINKNO": lst_linknos,
@@ -841,34 +860,30 @@ def read_xns_shp_and_get_dem_window(elevation_profiles, channel_xns, dem, logger
 
         # Now loop over the linknos to get access grid by window:
         with rasterio.open(dem) as ds_dem:
-
-            nodata_val = (
-                ds_dem.nodata
-            )  # NODATA val must be defined for this to return anything
-
+            nodata_val = ( ds_dem.nodata )  # NODATA val must be defined for this to return anything
+            
             # Get bounds of DEM (left, bottom, right, top):
             bnds = ds_dem.bounds
-
+            
             # Check the min and max of the coordinates in df_coords-
             # -and remove any cross-sections that extend beyond DEM:
-            df_coords["min_x"] = df_coords[["x1", "x2"]].min(axis=1)
-            df_coords["max_x"] = df_coords[["x1", "x2"]].max(axis=1)
-            df_coords["min_y"] = df_coords[["y1", "y2"]].min(axis=1)
-            df_coords["max_y"] = df_coords[["y1", "y2"]].max(axis=1)
-
+            df_coords["min_x"] = df_coords[ ["x1", "x2"] ].min( axis = 1 )
+            df_coords["max_x"] = df_coords[ ["x1", "x2"] ].max( axis = 1 )
+            df_coords["min_y"] = df_coords[ ["y1", "y2"] ].min( axis = 1 )
+            df_coords["max_y"] = df_coords[ ["y1", "y2"] ].max( axis = 1 )
+            
             # check min/max_x against bnds[0] and bnds[2] and min/max_y against bnds[1] and bnds[3]
             # min_x > bnds[0], max_x < bnds[2], min_y > bnds[1], max_y < bnds[3]
-
             df_coords = df_coords[
-                (df_coords["min_x"] > bnds[0])
-                & (df_coords["max_x"] < bnds[2])
-                & (df_coords["min_y"] > bnds[1])
-                & (df_coords["max_y"] < bnds[3])
+                ( df_coords["min_x"] > bnds[0] )
+                & ( df_coords["max_x"] < bnds[2] )
+                & ( df_coords["min_y"] > bnds[1] )
+                & ( df_coords["max_y"] < bnds[3] )
             ]
             # clean columns
-            df_coords = df_coords.drop(["min_x", "max_x", "min_y", "max_y"], axis=1)
+            df_coords = df_coords.drop( ["min_x", "max_x", "min_y", "max_y"], axis = 1 )
 
-            # Transform to pixel space
+            # Transform the minimum bounding rectangle corner coordinates to pixel space
             df_coords["col1"], df_coords["row1"] = ~ds_dem.transform * (
                 df_coords["x1"],
                 df_coords["y1"],
@@ -879,73 +894,66 @@ def read_xns_shp_and_get_dem_window(elevation_profiles, channel_xns, dem, logger
             )
 
             ## OR:
-            gp_coords = df_coords.groupby("LINKNO")
+            gp_coords = df_coords.groupby("LINKNO") 
 
             lst_all_zi = []
             j = 0
 
             for linkno, df_linkno in gp_coords:
-                row_min = int(df_linkno[["row1", "row2"]].min(axis=0).min())
-                row_max = int(df_linkno[["row1", "row2"]].max(axis=0).max())
-                col_min = int(df_linkno[["col1", "col2"]].min(axis=0).min())
-                col_max = int(df_linkno[["col1", "col2"]].max(axis=0).max())
-                strmord = int(df_linkno.strmord.iloc[0])
+                # Retrieve the bounding pixel information for the specified LINKNO
+                row_min = int( df_linkno[ ["row1", "row2"] ].min( axis = 0 ).min() )
+                row_max = int( df_linkno[ ["row1", "row2"] ].max( axis = 0 ).max() )
+                col_min = int( df_linkno[ ["col1", "col2"] ].min( axis = 0 ).min() )
+                col_max = int( df_linkno[ ["col1", "col2"] ].max( axis = 0 ).max() )
+                strmord = int( df_linkno.strmord.iloc[0] )
 
-                # Now get the DEM specified by this window as a numpy array:
-                w = ds_dem.read(1, window=((row_min, row_max + 1), (col_min, col_max + 1)))
-
+                # Read in the DEM specified by the bounding pixel window as a numpy array:
+                w = ds_dem.read( 1, window = ( ( row_min, row_max + 1 ), ( col_min, col_max + 1 ) ) )
+                
+                # Perform conditional no data checks and reset nodata_val if it is not properly set
                 w_min = np.min(w)
                 w_max = np.max(w)
-
                 if w_min < min_nodata_thresh:
                     nodata_val = w_min
                 elif w_max > max_nodata_thresh:
                     nodata_val = w_max
 
-                # NOW loop over each Xn:
+                # Loop over each cross-section on the stream segment (LINKNO):
                 for tpl_xn in df_linkno.itertuples():
                     j += 1
-                    xn_len = int(
-                        np.hypot(tpl_xn.col2 - tpl_xn.col1, tpl_xn.row2 - tpl_xn.row1)
-                    )
-                    lst_xnrow = np.linspace(
-                        tpl_xn.row1 - row_min, tpl_xn.row2 - row_min, xn_len
-                    )
-                    lst_xncol = np.linspace(
-                        tpl_xn.col1 - col_min, tpl_xn.col2 - col_min, xn_len
-                    )
+                    xn_len = int( np.hypot(tpl_xn.col2 - tpl_xn.col1, tpl_xn.row2 - tpl_xn.row1) ) # Calculate cross-section length
+                    lst_xnrow = np.linspace( tpl_xn.row1 - row_min, tpl_xn.row2 - row_min, xn_len ) # Generate evenly spaced row coordinates array
+                    lst_xncol = np.linspace( tpl_xn.col1 - col_min, tpl_xn.col2 - col_min, xn_len ) # Generate evenly space column coordinates array
 
                     # this is always 1 cell or equivalent to cell_size in meters/feet
                     # xnptdist = xn_len/len(lst_xnrow)
+                    
+                    # Retrieve DEM values along cross section
                     try:
-                        arr_zi = w[
-                            lst_xnrow.astype(int), lst_xncol.astype(int)
-                        ]  # nearest-neighbor
+                        arr_zi = w[ lst_xnrow.astype(int), lst_xncol.astype(int) ]  # nearest-neighbor
                     except:
                         continue
 
-                    # Remove possible no data values:NOTE:  They may not be defined in the original file
-                    arr_zi = arr_zi[arr_zi != np.float32(nodata_val)]
+                    # Remove possible no data values; NOTE - They may not be defined in the original file
+                    arr_zi = arr_zi[ arr_zi != np.float32(nodata_val) ]
 
-                    # if it only has less than 5 elevation measurements along this Xn, skip it
+                    # Skip cross-sections with less than 5 elevation measurements
                     if arr_zi.size < 5:
                         continue
 
-                    # Convert these from window row/col to raster row/col for bankpt use:
+                    # Convert the row/column indices from window row/col to raster row/col for subsequent bankpt identification use:
                     for i, xnrow in enumerate(lst_xnrow):
                         lst_xnrow[i] = lst_xnrow[i] + row_min
                         lst_xncol[i] = lst_xncol[i] + col_min
 
-                    tpl_out = (linkno, arr_zi, lst_xnrow, lst_xncol, strmord)
-                    lst_all_zi.append(tpl_out)
+                    tpl_out = ( linkno, arr_zi, lst_xnrow, lst_xncol, strmord ) # Create tuple containing the output information
+                    lst_all_zi.append( tpl_out ) # Append output tuple to list
 
         # print('\tTotal Xn\'s:  {}'.format(i))
         # print('\tTime interpolating elevation along Xn\'s:'+ str(timeit.default_timer()-start_time))
 
-        df = pd.DataFrame(
-            lst_all_zi, columns=["LINKNO", "elev", "xn_row", "xn_col", "strmord"]
-        )
-
+        # Generate DataFrame from list of tuples containing elevation profiles and write out to Parquet
+        df = pd.DataFrame( lst_all_zi, columns=["LINKNO", "elev", "xn_row", "xn_col", "strmord"] )
         df.to_parquet(elevation_profiles)
 
     else:

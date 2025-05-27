@@ -49,9 +49,12 @@ class CreateFilepaths:
     paths_mod: dict
     preprocess_flag: bool
     preprocess_version: str
+    xsec_flag: bool
+    xsec_folder: str
+    xsec_version: str
     
     def __post_init__(self, paths):
-        if self.preprocess_flag == True:
+        if ( ( self.preprocess_flag == True ) & ( self.xsec_flag == False ) ):
             inputs = [
                 'flowlines', 'dem', 'watershed', 'hs', 'physiography'
                 ]
@@ -70,7 +73,8 @@ class CreateFilepaths:
                         basename = f"{self.huc}_{stem}_{self.version}.{suffix}"
                 fpath = parent / basename         
                 setattr(self, key, fpath)
-        else:
+                
+        elif ( ( self.preprocess_flag == False ) & ( self.xsec_flag == False ) ):
             inputs = [
                 'flowlines', 'dem', 'watershed', 'hs', 'physiography'
                 ]
@@ -84,6 +88,56 @@ class CreateFilepaths:
                 elif key in preprocess:
                     parent = Path(self.folder) / self.huc / self.preprocess_version
                     basename = f"{self.huc}_{stem}_{self.preprocess_version}.{suffix}"
+                else:
+                    if self.version == "":
+                        parent = Path(self.folder) / self.huc
+                        basename = f"{self.huc}_{stem}.{suffix}"
+                    else:
+                        parent = Path(self.folder) / self.huc / self.version
+                        basename = f"{self.huc}_{stem}_{self.version}.{suffix}"
+                fpath = parent / basename         
+                setattr(self, key, fpath)
+        elif ( ( self.preprocess_flag == False ) & ( self.xsec_flag == True ) ):
+            inputs = [
+                'flowlines', 'dem', 'watershed', 'hs', 'physiography'
+                ]
+            preprocess = list( self.paths_mod['pre-process'].keys() )
+            xsecs = ['channel_xns', 'floodplain_xns', 'xn_coordinates']
+            for key, value in paths.items():
+                stem, suffix = value.split('.')
+    
+                if stem in inputs:
+                    parent = Path(self.folder) / self.huc
+                    basename = f"{self.huc}_{stem}.{suffix}"
+                elif key in preprocess:
+                    parent = Path(self.folder) / self.huc / self.preprocess_version
+                    basename = f"{self.huc}_{stem}_{self.preprocess_version}.{suffix}"
+                elif key in xsecs:
+                    parent = Path( self.xsec_folder ) / self.huc / self.xsec_version
+                    basename = f"{self.huc}_{stem}_{self.xsec_version}.{suffix}"
+                else:
+                    if self.version == "":
+                        parent = Path(self.folder) / self.huc
+                        basename = f"{self.huc}_{stem}.{suffix}"
+                    else:
+                        parent = Path(self.folder) / self.huc / self.version
+                        basename = f"{self.huc}_{stem}_{self.version}.{suffix}"
+                fpath = parent / basename         
+                setattr(self, key, fpath)            
+        elif ( ( self.preprocess_flag == True ) & ( self.xsec_flag == True ) ):
+            inputs = [
+                'flowlines', 'dem', 'watershed', 'hs', 'physiography'
+                ]
+            xsecs = ['channel_xns', 'floodplain_xns', 'xn_coordinates']
+            for key, value in paths.items():
+                stem, suffix = value.split('.')
+    
+                if stem in inputs:
+                    parent = Path(self.folder) / self.huc
+                    basename = f"{self.huc}_{stem}.{suffix}"
+                elif key in xsecs:
+                    parent = Path( self.xsec_folder ) / self.huc / self.xsec_version
+                    basename = f"{self.huc}_{stem}_{self.xsec_version}.{suffix}"
                 else:
                     if self.version == "":
                         parent = Path(self.folder) / self.huc
@@ -122,7 +176,10 @@ def create_filepaths(paths_toml, config, huc):
         paths = paths,
         paths_mod = paths_mod, 
         preprocess_flag = config.preprocess['preprocess_flag'],
-        preprocess_version = config.preprocess['preprocess_version']
+        preprocess_version = config.preprocess['preprocess_version'],
+        xsec_flag = config.reuse_xn['reuse_xn_flag'],
+        xsec_folder = config.reuse_xn['reuse_xn_data'],
+        xsec_version = config.reuse_xn['reuse_xn_version']
     )
 
     return Paths

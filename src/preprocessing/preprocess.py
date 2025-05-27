@@ -213,6 +213,13 @@ def hydro_condition_dem(Config, Paths, logger):
     else:
         logger.info("Streams near roads burned -- already exist!")
 
+    if ( ( Config.preprocess['burn_cutlines']['burn_cutlines_flag'] == True ) & ( Config.preprocess['burn_stream_at_roads']['burn_stream_at_roads_flag'] == False ) ):
+        Paths.burn_crossings = Paths.burn_cutlines
+    elif ( ( Config.preprocess['burn_cutlines']['burn_cutlines_flag'] == False ) & ( Config.preprocess['burn_stream_at_roads']['burn_stream_at_roads_flag'] == False ) ):
+        raise ValueError('Both the burn_cutlines and burn_stream_at_roads options are false!')        
+    else:
+        raise ValueError('Both the burn_cutlines and burn_stream_at_roads options are true!')
+        
     # Denoise the DEM, or change the Paths.denoise path if the denoise_flag == False
     if Config.preprocess['denoise']['denoise_flag'] == True: # Only enter the denoise process if the denoise_flag is True
         if not Paths.denoise.is_file():

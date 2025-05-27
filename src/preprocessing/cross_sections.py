@@ -299,7 +299,7 @@ def write_xns_shp(df_coords, epsg, xn_file, xn_gap, xn_type, xn_slope_vertical_c
     return lst_xnrowcols
 
 
-def generate(Config, Paths):
+def generate(Config, Paths, logger):
     """
     Generates the network-perpendicular channel and floodplain cross-sections
 
@@ -315,32 +315,35 @@ def generate(Config, Paths):
     None.
 
     """
-    # Generate interpolated coordinates along simplified stream network
-    coords = get_stream_coords_from_features(
-        Paths.network_poly,
-        Config.xn_lengths['xn_gap'],
-        Config.xn_lengths['min_length_simplify'],
-        Config.preprocess['reach-order']['reach_id'],
-        Config.preprocess['reach-order']['order_id'],
-        Paths.xn_coordinates
-    )
-
-    # Generate channel cross sections
-    write_xns_shp(
-        coords, 
-        Config.spatial_ref['epsg'], 
-        Paths.channel_xns, 
-        Config.xn_lengths['xn_gap'], 
-        Config.xn_lengths["channel"],
-        Config.xn_lengths['xn_slope_vertical_cutoff'],
-    )
-
-    # Generate floodplain cross sections
-    write_xns_shp(
-        coords, 
-        Config.spatial_ref['epsg'], 
-        Paths.floodplain_xns, 
-        Config.xn_lengths['xn_gap'], 
-        Config.xn_lengths["floodplain"],
-        Config.xn_lengths['xn_slope_vertical_cutoff'],
-    )
+    if Config.reuse_xn['reuse_xn_flag'] == False:
+        # Generate interpolated coordinates along simplified stream network
+        coords = get_stream_coords_from_features(
+            Paths.network_poly,
+            Config.xn_lengths['xn_gap'],
+            Config.xn_lengths['min_length_simplify'],
+            Config.preprocess['reach-order']['reach_id'],
+            Config.preprocess['reach-order']['order_id'],
+            Paths.xn_coordinates
+        )
+    
+        # Generate channel cross sections
+        write_xns_shp(
+            coords, 
+            Config.spatial_ref['epsg'], 
+            Paths.channel_xns, 
+            Config.xn_lengths['xn_gap'], 
+            Config.xn_lengths["channel"],
+            Config.xn_lengths['xn_slope_vertical_cutoff'],
+        )
+    
+        # Generate floodplain cross sections
+        write_xns_shp(
+            coords, 
+            Config.spatial_ref['epsg'], 
+            Paths.floodplain_xns, 
+            Config.xn_lengths['xn_gap'], 
+            Config.xn_lengths["floodplain"],
+            Config.xn_lengths['xn_slope_vertical_cutoff'],
+        )
+    else:
+        logger.info(f"Skipped generating channel and floodplain cross-sections, reusing cross-sections from {Config.reuse_xn['reuse_xn_data']} version {Config.reuse_xn['reuse_xn_version']}. ")
