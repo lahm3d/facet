@@ -46,26 +46,53 @@ class CreateFilepaths:
     huc: str
     version: str
     paths: InitVar[dict]
-
+    paths_mod: dict
+    preprocess_flag: bool
+    preprocess_version: str
+    
     def __post_init__(self, paths):
-        inputs = [
-            'flowlines', 'dem', 'watershed', 'hs', 'physiography'
-            ]
-        for key, value in paths.items():
-            stem, suffix = value.split('.')
-
-            if stem in inputs:
-                parent = Path(self.folder) / self.huc
-                basename = f"{self.huc}_{stem}.{suffix}"
-            else:
-                if self.version == "":
+        if self.preprocess_flag == True:
+            inputs = [
+                'flowlines', 'dem', 'watershed', 'hs', 'physiography'
+                ]
+            for key, value in paths.items():
+                stem, suffix = value.split('.')
+    
+                if stem in inputs:
                     parent = Path(self.folder) / self.huc
                     basename = f"{self.huc}_{stem}.{suffix}"
                 else:
-                    parent = Path(self.folder) / self.huc / self.version
-                    basename = f"{self.huc}_{stem}_{self.version}.{suffix}"
-            fpath = parent / basename         
-            setattr(self, key, fpath)
+                    if self.version == "":
+                        parent = Path(self.folder) / self.huc
+                        basename = f"{self.huc}_{stem}.{suffix}"
+                    else:
+                        parent = Path(self.folder) / self.huc / self.version
+                        basename = f"{self.huc}_{stem}_{self.version}.{suffix}"
+                fpath = parent / basename         
+                setattr(self, key, fpath)
+        else:
+            inputs = [
+                'flowlines', 'dem', 'watershed', 'hs', 'physiography'
+                ]
+            preprocess = list( self.paths_mod['pre-process'].keys() )
+            for key, value in paths.items():
+                stem, suffix = value.split('.')
+    
+                if stem in inputs:
+                    parent = Path(self.folder) / self.huc
+                    basename = f"{self.huc}_{stem}.{suffix}"
+                elif key in preprocess:
+                    parent = Path(self.folder) / self.huc / self.preprocess_version
+                    basename = f"{self.huc}_{stem}_{self.preprocess_version}.{suffix}"
+                else:
+                    if self.version == "":
+                        parent = Path(self.folder) / self.huc
+                        basename = f"{self.huc}_{stem}.{suffix}"
+                    else:
+                        parent = Path(self.folder) / self.huc / self.version
+                        basename = f"{self.huc}_{stem}_{self.version}.{suffix}"
+                fpath = parent / basename         
+                setattr(self, key, fpath)
         # add parent folder 
         setattr(self, "parent", Path(self.folder) / self.huc)
 
@@ -84,12 +111,18 @@ def create_config(config_toml):
     return CreateConfig(config=config)
 
 def create_filepaths(paths_toml, config, huc):
-    paths = read_toml(paths_toml)
+    paths_mod = read_toml(paths_toml)
+    paths = dict( paths_mod['inputs'].items() )
+    paths.update( paths_mod['pre-process'].items() )
+    paths.update( paths_mod['cross-section-method'].items() )
     Paths = CreateFilepaths(
         folder = config.ancillary['data'],
         huc = huc,
         version = config.debug['version'],
-        paths = paths
+        paths = paths,
+        paths_mod = paths_mod, 
+        preprocess_flag = config.preprocess['preprocess_flag'],
+        preprocess_version = config.preprocess['preprocess_version']
     )
 
     return Paths
