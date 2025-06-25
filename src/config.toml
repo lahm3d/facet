@@ -23,14 +23,14 @@ cell_size = 1
 preprocess_flag = true # A flag to determine whether preprocessing occurs (this variable is currently unused / not implemented)
 
 	[preprocess.burn_cutlines]
-	burn_cutlines_flag = true # Flag to determine whether cutlines are burned into the DEM for hydro-enforcement
+	burn_cutlines_flag = true # Flag to determine whether cutlines are burned into the DEM for hydro-enforcement (true or false)
 	
     [preprocess.burn_stream_at_roads]
-	burn_stream_at_roads_flag = false # Flag to determine whether rail/road crossings are breached at pre-defined streamlines for hydro-enforcement
+	burn_stream_at_roads_flag = false # Flag to determine whether rail/road crossings are breached at pre-defined streamlines for hydro-enforcement (true or false)
     width = 100
 
     [preprocess.denoise]
-	denoise_flag = false # Flag to determine whether DEM denoising is desired (highly suggested for high-resolution DEMs that have not yet been denoised)
+	denoise_flag = false # Flag to determine whether DEM denoising is desired (highly suggested for high-resolution DEMs that have not yet been denoised) (true or false)
     filter_size = 11
     norm_diff = 10
     num_iter = 3
@@ -44,7 +44,10 @@ preprocess_flag = true # A flag to determine whether preprocessing occurs (this 
     order_id = "strmOrder"
 
     [preprocess.taudem]
-    cores = 2
+    cores = 2 # set how many corse you want TauDEM to use
+	network_method = "area_threshold" # Network method should either be "area_threshold" or "flowline_weights"
+	drainage_threshold = 10000 # drainage area threshold in number of cells
+	
 
 [xn_lengths]
     xn_gap = 5
