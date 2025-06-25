@@ -10,6 +10,7 @@ physiography = "physiography.shp"
 
 # [pre-process]
 road_rail_crossings = "rr_crossings.shp"
+burn_cutlines = "burn_cutlines.tif"
 burn_crossings = "burn_crossings.tif"
 denoise = "denoise.tif"
 breach = "breach.tif"
@@ -18,6 +19,7 @@ d8_fdir_point = "d8_fdir_point.tif"
 slope_grid_sd8  = "slope_grid_sd8.tif" #sd8
 area_grid_ad8 = "area_grid_ad8.tif" #ad8_no_wg
 area_grid_ad8_ip = "area_grid_ad8_ip.tif" #ad8_wg
+network_raster = "network.tif" #stream_raster
 network_order = "network_order.tif" #ord_g
 network_tree = "network_tree.txt" #tree
 network_coords = "network_coords.txt" #coord

@@ -7,6 +7,7 @@ import fiona
 from osgeo import gdal
 from osgeo_utils.gdal_polygonize import gdal_polygonize
 import rasterio
+import rasterstats
 from shapely.geometry import Point
 import subprocess
 import numpy as np
@@ -14,8 +15,28 @@ from src.utils import utils
 import time
 
 def clip_flowlines(flowlines, mask, output, logger):
+    """
+    Clips the provided flowlines to the watershed polygon boundary in case they
+    extend beyond it which would create problems in subsequent steps
 
-    if not output.is_file():
+    Parameters
+    ----------
+    flowlines : str
+        String defining the filepath for the input flowlines *.shp file (typically NHD Plus HR flowlines).
+    mask : WindowsPath object of pathlib module
+        Path to watershed polygon (typically a *.shp file).
+    output : WindowsPath object of pathlib module
+        Path where clipped flowlines are written (typically a *.shp file).
+    logger : Logger object of logging module
+        Logger writes processing information to text file.
+
+    Returns
+    -------
+    None.
+
+    """
+
+    if not output.is_file(): # only enter this step if the file does not already exist
         aoi_flowlines = utils.vector_to_geodataframe(flowlines)
         mask = utils.vector_to_geodataframe(mask)
         flowlines = aoi_flowlines.clip(mask)
@@ -34,19 +55,45 @@ def clip_flowlines(flowlines, mask, output, logger):
             logger.info("NHD Flowlines clipped")
 
 
-def merge_rails_and_roads(aoi_rails, aoi_roads, mask, output, logger):
+def merge_rails_and_roads(out_epsg, aoi_rails, aoi_roads, mask, output, logger):
+    """
+    Clips the roads and rails line vector files to the watershed mask, and then
+    merges the clipped line vectors to a single combined file which is written
+    to the data/version directory.
 
-    if not output.is_file():
+    Parameters
+    ----------
+    out_epsg : Integer
+        Integer specifying the European Petroleum Geospatial Group code defining
+        the output horizontal coordinate reference system
+    aoi_rails : String
+        String defining the filepath for the railroad lines vector file (typically a *.shp file).
+    aoi_roads : String
+        String defining the filepath for the road lines vector file (typically a *.shp file).
+    mask : WindowsPath object of pathlib module
+        Path to watershed polygon (typically a *.shp file).
+    output : WindowsPath object of pathlib module
+        Path to watershed polygon (typically a *.shp file).
+    logger : Logger object of logging module
+        Logger writes processing information to text file.
+
+    Returns
+    -------
+    None.
+
+    """
+
+    if not output.is_file(): # if the merged roads/rails file already exists, do not proceed with this step
         roads = utils.vector_to_geodataframe(aoi_roads)
         rails = utils.vector_to_geodataframe(aoi_rails)
-        mask = utils.vector_to_geodataframe(mask)
+        mask = utils.vector_to_geodataframe(mask).to_crs( epsg = out_epsg )
 
-        roads_mask = roads.clip(mask)
-        rails_mask = rails.clip(mask)
+        roads_mask = roads.clip( mask.to_crs( roads.crs ) ).to_crs( epsg = out_epsg )
+        rails_mask = rails.clip( mask.to_crs( rails.crs ) ).to_crs( epsg = out_epsg )
 
         road_rail_crossings = gpd.GeoDataFrame(
-            pd.concat([roads_mask, rails_mask], ignore_index=True), 
-            crs=mask.crs
+            pd.concat( [ roads_mask, rails_mask ], ignore_index = True), 
+            crs = mask.crs
         )
         road_rail_crossings.to_file(output)
         logger.info("Roads and rails merged")
@@ -54,47 +101,139 @@ def merge_rails_and_roads(aoi_rails, aoi_roads, mask, output, logger):
         logger.info("Roads and rails layer already exists. Skipping step")
 
 
+def burn_cutlines(dem, output, cutlines, out_epsg, logger):
+    """
+    Burn the cutlines into the DEM
+
+    Parameters
+    ----------
+    dem : WindowsPath object of pathlib module
+        Path to the input DEM which will be cut.
+    output : WindowsPath object of pathlib module
+        Path to which the cut DEM will be written.
+    cutlines : String
+        Path to the cutlines vector file (typically a *.
+    out_epsg : Integer
+        DESCRIPTION.
+    logger : Logger object of logging module
+        Logger writes processing information to text file.
+
+    Returns
+    -------
+    None.
+
+    """
+    
+    # Read in the cutlines and attribute them with the minimum DEM elevation
+    cutlines_gdf = utils.vector_to_geodataframe(cutlines).to_crs( epsg = out_epsg )
+    cut_zmin = rasterstats.zonal_stats( cutlines, dem, stats = "min" )
+    cutlines_gdf['elevation'] = [i['min'] for i in cut_zmin]
+    cutline_zip = zip(cutlines_gdf.geometry.values, cutlines_gdf.elevation.values)
+    
+    # Burn the cutlines into the DEM and write out to a new file
+    with rasterio.open(dem, "r") as src:
+        band_num = 1
+        src_image = src.read(band_num, out_dtype = src.meta['dtype'])
+        dem_cut = rasterio.features.rasterize( cutline_zip, out = src_image,
+                                              transform = src.transform,
+                                              all_touched = True )
+        
+        # save tif
+        profile = src.profile
+        profile.update( dtype= src.meta['dtype'], count = 1, compress = "lzw" )
+
+        with rasterio.open( output, "w", **profile ) as dst:
+            dst.write( dem_cut, 1 )
+
+
 def hydro_condition_dem(Config, Paths, logger):
+    """
+    Hydro-condition the provided DEM by burning in cutlines, burning in road/rail
+    crossings near pre-defined streams, denoising the DEM by applying a feature-
+    preverving smoothing algorithm, and breaching any remaining depressions.
+
+    Parameters
+    ----------
+    Config : CreatConfig object of src.utils.parse_tomle module
+        Object containing dictionaries specifying processing parameters.
+    Paths : CreateFilepaths object of src.utils.parse_tomle module
+        Object containing filepaths for the outputs of the FACET workflow.
+    logger : Logger object of logging module
+        Logger writes processing information to text file.
+        
+    Returns
+    -------
+    None.
+
+    """
+    
+    # Setup whiteboxtool options
     wbt = whitebox.WhiteboxTools()
     wbt._WhiteboxTools__compress_rasters = "True"
     wbt.set_verbose_mode(False)
 
+    # Merge rail/road features into a single file for "burn_stream_at_roads" function
     merge_rails_and_roads(
+        int( Config.spatial_ref['epsg'] ),
         Config.ancillary['census_rails'],
         Config.ancillary['census_roads'],
         Paths.watershed,
         Paths.road_rail_crossings,
         logger,
     )
+    
+    # Burn cutlines into DEM
+    if ( not Paths.burn_cutlines.is_file() ) & ( Config.preprocess['burn_cutlines']['burn_cutlines_flag'] == True ):
+        start = time.time()
+        burn_cutlines( Paths.dem, Paths.burn_cutlines, Config.ancillary['cutlines'], int( Config.spatial_ref['epsg'] ), logger )
+        run_time = round((time.time() - start) / 60, 2)
+        logger.info(f"Cutlines burned. Run-time: {run_time} mins")
+    elif Config.preprocess['burn_cutlines']['burn_cutlines_flag'] == False:
+        logger.info("Cutlines not burned -- burn_cutlines_flag == False")
+    else:
+        logger.info("Cutlines burned -- already exist!")
 
-    if not Paths.burn_crossings.is_file():
+
+    # Burn rail/road crossings into DEM where they intersect the flowlines vector file
+    if ( not Paths.burn_crossings.is_file() ) & ( Config.preprocess['burn_stream_at_roads']['burn_stream_at_roads_flag'] == True ):
         start = time.time()
         wbt.burn_streams_at_roads(
             Paths.dem, 
             Paths.flowlines, 
             Paths.road_rail_crossings, 
             Paths.burn_crossings, 
-            width=Config.preprocess['burn_stream_at_roads']['width'], 
+            width = Config.preprocess['burn_stream_at_roads']['width'], 
         )
         run_time = round((time.time() - start) / 60, 2)
         logger.info(f"Streams near roads burned. Run-time: {run_time} mins")
+    elif  Config.preprocess['burn_stream_at_roads']['burn_stream_at_roads_flag'] == False:
+        logger.info("Streams near roads not burned -- burn_stream_at_roads_flag == False!")
     else:
         logger.info("Streams near roads burned -- already exist!")
 
-    if not Paths.denoise.is_file():
-        start = time.time()
-        wbt.feature_preserving_smoothing(
-            Paths.burn_crossings, 
-            Paths.denoise, 
-            filter=Config.preprocess['denoise']['filter_size'],
-            norm_diff=Config.preprocess['denoise']['norm_diff'],
-            num_iter=Config.preprocess['denoise']['num_iter'],
-        )
-        run_time = round((time.time() - start) / 60, 2)
-        logger.info(f"Feature preserving smoothing (denoising) performed. Run-time: {run_time} mins")
+    # Denoise the DEM, or change the Paths.denoise path if the denoise_flag == False
+    if Config.preprocess['denoise']['denoise_flag'] == True: # Only enter the denoise process if the denoise_flag is True
+        if not Paths.denoise.is_file():
+            start = time.time()
+            wbt.feature_preserving_smoothing(
+                Paths.burn_crossings, 
+                Paths.denoise, 
+                filter=Config.preprocess['denoise']['filter_size'],
+                norm_diff=Config.preprocess['denoise']['norm_diff'],
+                num_iter=Config.preprocess['denoise']['num_iter'],
+            )
+            run_time = round((time.time() - start) / 60, 2)
+            logger.info(f"Feature preserving smoothing (denoising) performed. Run-time: {run_time} mins")
+        else:
+            logger.info("Feature preserving smoothing (denoising) performed -- already exist!")
     else:
-        logger.info("Feature preserving smoothing (denoising) performed -- already exist!")
-
+        if Paths.burn_cutlines.is_file():
+            Paths.denoise = Paths.burn_cutlines
+            logger.info("Feature preserving smoothing (denoising) not performed -- flag = False, using the unsmoothed, cutline burned DEM for future steps!")
+        if Paths.burn_crossings.is_file():
+            Paths.denoise = Paths.burn_crossings
+            logger.info("Feature preserving smoothing (denoising) not performed -- flag = False, using the unsmoothed, rail/road crossings burned DEM for future steps!")
+     
     if not Paths.breach.is_file():
         start = time.time()
         wbt.breach_depressions_least_cost(
@@ -273,6 +412,31 @@ def run_command(cmd, logger):
 
 
 def run_preprocessing_steps(Config, Paths, logger):
+    """ 
+    Run the pre-processing steps:
+            1. clip flowlines to watershed polygon
+            2. hydro-condition the DEM
+                a.
+                b.
+                c.
+            3. create weight grid from streamlines
+            4.
+    
+
+    Parameters
+    ----------
+    Config : CreatConfig object of src.utils.parse_tomle module
+        Object containing dictionaries specifying processing parameters.
+    Paths : CreateFilepaths object of src.utils.parse_tomle module
+        Object containing filepaths for the outputs of the FACET workflow.
+    logger : Logger object of logging module
+        Logger writes processing information to text file.
+
+    Returns
+    -------
+    None.
+
+    """
     clip_flowlines(Config.ancillary['flowlines'], Paths.watershed, Paths.flowlines, logger)
     hydro_condition_dem(Config, Paths, logger)
     create_weight_grid_from_streamlines(Paths.flowlines, Paths.watershed, Paths.dem, Paths.initiation_pixels, logger)

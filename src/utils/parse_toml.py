@@ -86,10 +86,10 @@ def create_config(config_toml):
 def create_filepaths(paths_toml, config, huc):
     paths = read_toml(paths_toml)
     Paths = CreateFilepaths(
-        folder=config.ancillary['data'],
-        huc=huc,
-        version=config.debug['version'],
-        paths=paths
+        folder = config.ancillary['data'],
+        huc = huc,
+        version = config.debug['version'],
+        paths = paths
     )
 
     return Paths

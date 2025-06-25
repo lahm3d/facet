@@ -17,6 +17,7 @@ and stream slope from DEMs.
 
 ------------------------------------------------------------------------------
 """
+import argparse
 import time
 from pathlib import Path
 
@@ -30,19 +31,36 @@ from src.metrics import floodplain_metrics
 
 from src.postprocessing import spatial_qc as qc
 
+
 # Debug WBT compile issue only on WSL Ubuntu 20.0
 # whitebox.download_wbt(linux_musl=True, reset=True)
 
 if __name__ == "__main__":
-
-    config_toml = Path("src/config_test.toml")
-    fpaths_toml = Path("src/utils/filepaths.toml")
+    
+    # Command line argument parsing for easier command line implementation
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config_toml", help = "filepath to configuration toml file, relative to root FACET directory, i.e., src/config_test.toml")
+    parser.add_argument("--fpaths_toml", help = "filepath to filepaths toml file, relative to root FACET directory, i.e. src/filepaths.toml")
+    args = parser.parse_args()
+    
+    config_toml = Path(args.config_toml)
+    fpaths_toml = Path(args.fpaths_toml)
+    
+    # config_toml = Path("src/config_test.toml")
+    # fpaths_toml = Path("src/utils/filepaths.toml")
 
     # step 1
     Config = parse_toml.create_config(config_toml)
 
     # step 2
-    hucs = generate_processing_batch(Config.batch_csv)
+    if ( Config.hucs['batch_csv'] != "None" ) & ( Config.hucs['huc'] != "None" ):
+        raise ValueError(f'Both a CSV of HUCs and an individual HUC are specified in the .toml, choose one or the other')
+    elif ( Config.hucs['batch_csv'] == "None" ) & ( Config.hucs['huc'] == "None" ):
+        raise ValueError(f'Both a CSV of HUCs and an individual HUC are set to "None" in the .toml, one these needs to have a valid value')
+    elif ( Config.hucs['batch_csv'] != "None" ):
+        hucs = generate_processing_batch(Config.batch_csv)
+    elif ( Config.hucs['huc'] != "None" ):
+        hucs = [ Config.hucs['huc'] ] # create a list containing the single HUC code so that it is iterable and the below for-loop does not break
 
     for huc in hucs:
         # step 3
