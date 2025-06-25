@@ -3,3 +3,5 @@ __pycache__/
 *.idea
 experimental/*
 notebooks/*
+.ipynb_checkpoints/*
+.vscode/*
