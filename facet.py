@@ -53,9 +53,10 @@ if __name__ == "__main__":
         # logging
         logger = utils.initialize_logger(Paths.log)
 
+        # log input parameters
         Paths_dict = parse_toml.class_to_dict(Paths)
-        # for k,v in Paths_dict.items():
-        #     print(k,v)
+        for k,v in Paths_dict.items():
+            logger.debug(f"{k}: {v}")
 
         # start HUC processing time
         start = time.time()
@@ -88,13 +89,13 @@ if __name__ == "__main__":
 
         # Channel Curvature Metrics
         curvature_metrics.derive(
-            Paths.xn_coordinates, 
-            Paths.dem, 
-            Paths.bank_pixels, 
-            Config.spatial_ref['cell_size'], 
-            Config.methods['curvature'], 
+            Paths.xn_coordinates,
+            Paths.dem,
+            Paths.bank_pixels,
+            Config.spatial_ref['cell_size'],
+            Config.methods['curvature'],
             Paths.network_poly,
-            Paths.channel_segs, 
+            Paths.channel_segs,
             logger
             )
 
@@ -130,7 +131,7 @@ if __name__ == "__main__":
         # Quality Checks against NHD
         flowline_mask = qc.create_flowline_qc_mask(
             Paths.flowlines, 
-            Config.postprocess['stream-buffer'], 
+            Config.postprocess['stream-buffer'],
             Paths.watershed
         )
 
@@ -168,4 +169,7 @@ if __name__ == "__main__":
         floodplain_xns_qc = qc.flag_features_by_qc_mask(
             floodplain_xns_qc, waterbody_mask, "WBD_Flag", output=Paths.floodplain_xns
             )
+
         logger.info(f"Total run time: {round((time.time() - start) / 60, 2)} mins")
+        
+        utils.clear_out_logger()
