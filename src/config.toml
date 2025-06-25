@@ -20,8 +20,8 @@ epsg = "5070"
 cell_size = 1
 
 [preprocess]
-preprocess_flag = false # A flag to determine whether preprocessing occurs
-preprocess_version= 'test_network_delineation_method_2' # Name of alternative version where preprocess outputs are located if "preprocess_flag = true"
+preprocess_flag = false # A boolean flag to determine whether preprocessing occurs
+preprocess_version = 'test_network_delineation_method_2' # Name of alternative version where preprocess outputs are located if "preprocess_flag = true"
     
 	[preprocess.burn_cutlines]
 	burn_cutlines_flag = true # Flag to determine whether cutlines are burned into the DEM for hydro-enforcement (true or false)
@@ -31,7 +31,7 @@ preprocess_version= 'test_network_delineation_method_2' # Name of alternative ve
     width = 100
 
     [preprocess.denoise]
-	denoise_flag = false # Flag to determine whether DEM denoising is desired (highly suggested for high-resolution DEMs that have not yet been denoised) (true or false)
+	denoise_flag = false # Boolean flag to determine whether DEM denoising is desired (highly suggested for high-resolution DEMs that have not yet been denoised) (true or false)
     filter_size = 11
     norm_diff = 10
     num_iter = 3
@@ -45,10 +45,14 @@ preprocess_version= 'test_network_delineation_method_2' # Name of alternative ve
     order_id = "strmOrder"
 
     [preprocess.taudem]
-    cores = 2 # set how many corse you want TauDEM to use
+    cores = 2 # set how many cores you want TauDEM to use
 	network_method = "area_threshold" # Network method should either be "area_threshold" or "flowline_weights"
 	drainage_threshold = 10000 # drainage area threshold in number of cells
-	
+
+[reuse_xn]
+		reuse_xn_flag = false # A boolean flag to determine whether channel and floodplain metrics will be delineated from previously generated cross-sections, skip the cross-section generation steps
+		reuse_xn_data = "" # The data directory (containing a version subdirectory) in which the previously generated channel and floodplain cross sections are located
+		reuse_xn_version = "" # Name of alternative version in which the previously generated channel and floodplain cross sections are located
 
 [xn_lengths]
     xn_gap = 5

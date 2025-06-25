@@ -71,6 +71,9 @@ Navigate to `facet/src/config.toml` and edit the following values:
 
 `debug` and `version` allows users to run facet multiple times with parameter settings. If you want to run facet with two separate settings then you can modify the `version` variable to a descriptive string
 
+`preprocess_flag`: determines whether preprocessing will be completed or previously generated outputs will be used, true or false
+`preprocess_version`: Name of alternative version where preprocess outputs are located if "preprocess_flag: true"
+
 `preprocess.burn_cutlines_flag`: determines whether cutlines will be burned into DEM, true or false
 
 `preprocess.burn_stream_at_roads_flag`: determines whether DEM will be burned where roads/rails cross streams, true or false
@@ -83,6 +86,11 @@ Navigate to `facet/src/config.toml` and edit the following values:
 
 `preprocess.taudem.network_method`: Determine whether stream initiation weights or drainage area thresholds are used to generate stream network, should be'area_threshold' or 'flowline_weights'
 `preprocess.taudem.threshold`: Drainage area threshold for stream network generation in number of cells (be cognizant of raster resolution)
+
+`reuse_xn_flag`: determines whether previously-generated cross-sections will be used, true or false
+`reuse_xn_data`: the data directory (containing a version subdirectory) in which the previously generated channel and floodplain cross sections are located if "reuse_xn_flag: true"
+`reuse_xn_version`: Name of alternative version in which the previously generated channel and floodplain cross sections are located if "reuse_xn_flag: true"
+
 
 `xn_gap`: Gap between each cross-section. This is not consistent, usually for first ~2-4 cross-sections on every reach to ensure whole number of cross-sections are generated consistently.
 
