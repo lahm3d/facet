@@ -124,7 +124,7 @@ def find_bank_angles(tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert,
         tpl_angles = (lf_angle, rt_angle)
 
     except Exception as e:
-        logger.info("\r\nError in find_bank_angles. Exception: {} \n".format(e))
+        logger.debug("\r\nError in find_bank_angles. Exception: {} \n".format(e))
 
     return tpl_angles
 
@@ -372,7 +372,7 @@ def find_bank_ratio_method(lst_total, ratio_threshold, xnelev_zero, slp_thresh, 
                         tpl_bfpts = (lf_bank_ind, rt_bank_ind, bf_height)
 
     except Exception as e:
-        logger.info("\r\nError in find_bank_ratio_method. Exception: {} \n".format(e))
+        logger.debug("\r\nError in find_bank_ratio_method. Exception: {} \n".format(e))
 
     return tpl_bfpts
 
@@ -586,7 +586,7 @@ def analyze_xnelev(
                     break  # no need to keep slicing here, unless we want to try for FP analysis
 
     except Exception as e:
-        logger.info("\r\nError in analyze_xn_elev. Exception: {} \n".format(e))
+        logger.debug("\r\nError in analyze_xn_elev. Exception: {} \n".format(e))
         pass
 
     return lst_bfmetrics
@@ -685,7 +685,7 @@ def chanmetrics_bankpts(
             for indx in arr_strides:
                 df_xn_elev_n = df_xn_elev.iloc[j : int(indx)]
                 j = int(indx) + 1
-                logger.info("\tIndex {} - {}/{}".format(j, int(indx), xn_count))
+                logger.debug("\tIndex {} - {}/{}".format(j, int(indx), xn_count))
 
                 # << INTERPOLATE XNs >>
                 interpolate_columns = [
@@ -992,7 +992,7 @@ def derive(cell_size, elevation_profiles, channel_xns, dem, bank_points, params,
     None.
 
     """
-
+    start = perf_counter()
     df_xn_elev = read_xns_shp_and_get_dem_window(elevation_profiles, channel_xns, dem, logger)
 
     chanmetrics_bankpts(
@@ -1007,3 +1007,6 @@ def derive(cell_size, elevation_profiles, channel_xns, dem, bank_points, params,
         epsg,
         logger,
         )
+
+    run_time = elapsed_time(start)
+    logger.info( f"Channel Cross-section Metrics. Run-time: {run_time}" ) 

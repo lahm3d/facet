@@ -67,7 +67,7 @@ def fp_metrics_chsegs(flood_extent_layer, ch_width_id, channel_segs, xn_type, lo
                     # Turn the cross-section into a linestring:
                     fp_ls = LineString([Point(lst_xy[0]), Point(lst_xy[1])])
                 except:
-                    logger.info("Error converting Xn endpts to LineString")
+                    logger.debug("Error converting Xn endpts to LineString")
                     pass
 
                 # Buffer the cross-section to form a 2D rectangle:
@@ -136,7 +136,7 @@ def fp_metrics_chsegs(flood_extent_layer, ch_width_id, channel_segs, xn_type, lo
                 lst_rug.append(fp_rug)
                 lst_geom.append(tpl.geometry)
             except Exception as e:
-                logger.info(f"Error with segment {tpl.Index}: {e}")
+                logger.debug(f"Error with segment {tpl.Index}: {e}")
                 lst_fpwid.append(-9999.0)
                 lst_fprng.append(-9999.0)
                 lst_geom.append(-9999.0)
@@ -386,7 +386,7 @@ def hand_method(
                     # Loop over each segment:
                     for tpl in gdf_segs.itertuples():
                         try:
-                            logger.info(f"\t{tpl.Index}")
+                            logger.debug(f"\t{tpl.Index}")
 
                             # Get Xn length based on stream order:
                             # p_xnlength, p_fitlength = preprocessing.get_xn_length_by_order(
@@ -411,7 +411,7 @@ def hand_method(
                                 # Turn the cross-section into a linestring:
                                 fp_ls = LineString([Point(lst_xy[0]), Point(lst_xy[1])])
                             except Exception as e:
-                                logger.info(
+                                logger.debug(
                                     f"Error converting Xn endpts to LineString: {e}"
                                 )
                                 pass
@@ -515,7 +515,7 @@ def hand_method(
                             )
 
                             if len(df_steps.index) < 3:
-                                logger.info("Too few slices!")
+                                logger.debug("Too few slices!")
                                 lst_bnk_ht.append(-9999.0)
                                 lst_chn_wid.append(-9999.0)
                                 lst_chn_shp.append(-9999.0)
@@ -565,7 +565,7 @@ def hand_method(
                                 ]  # also remove nodata vals
 
                                 if w_fp.size == 0:
-                                    logger.info("No FP!")
+                                    logger.debug("No FP!")
                                     # There's nothing we can do here related to FP:
                                     lst_fpmax.append(-9999.0)
                                     lst_fpmin.append(-9999.0)
@@ -657,7 +657,7 @@ def hand_method(
 
                             # logger.info('hey')
                         except Exception as e:
-                            logger.info(
+                            logger.debug(
                                 f"Error with segment {tpl.Index}; skipping. {e}"
                             )
                             # sys.exit()
@@ -715,7 +715,7 @@ def rugosity(arr, res, logger):
         area2d = len(arr) * res**2  # planar surface area
         rug = area3d / area2d
     except:
-        logger.info(f"Error in rugosity. arr.shape: {arr.shape}")
+        logger.debug(f"Error in rugosity. arr.shape: {arr.shape}")
         return -9999.0
 
     return rug
@@ -726,6 +726,11 @@ def derive(
     ch_width_id, channel_segs, xn_type, 
     logger
     ):
+    
+    start = perf_counter()
 
     read_fp_xns_shp_and_get_1D_fp_metrics(floodplain_xns, flood_extent_layer, dem, logger)
     # fp_metrics_chsegs(flood_extent_layer, ch_width_id, channel_segs, xn_type, logger)
+    
+    run_time = elapsed_time(start)
+    logger.info( f"Floodplain Cross-section Metrics. Run-time: {run_time}" ) 

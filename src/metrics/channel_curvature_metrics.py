@@ -186,7 +186,7 @@ def bankpixels_from_curvature_window(
                             )
                             w_curve = -w_curve / (2 * (Zx**2 + Zy**2 + 1) ** (1.5))
                         except:
-                            logger.info(
+                            logger.debug(
                                 "Error calculating Curvature in window:skipping"
                             )
                             continue
@@ -285,7 +285,7 @@ def channel_width_from_bank_pixels(
                 for i_linkno, df_linkno in gp_coords:
                     j += 1
                     i_linkno = int(i_linkno)
-                    logger.info("LINKNO:  {}".format(i_linkno))
+                    logger.debug("LINKNO:  {}".format(i_linkno))
 
                     # << Analysis by reach segments >>
                     # Set up index array to split up df_linkno into segments
@@ -454,7 +454,7 @@ def channel_width_from_bank_pixels(
 
 
 def derive(xn_coordinates, dem, bank_pixels, cell_size, wavelet_parameters, network_poly, channel_segs, logger):
-
+    start = perf_counter()
     df_coords = pd.read_csv(xn_coordinates)
 
     buffer, curve_threshold, minimum_window_size, method, i_step, max_buff, curvature_windows = wavelet_parameters.values()
@@ -481,3 +481,5 @@ def derive(xn_coordinates, dem, bank_pixels, cell_size, wavelet_parameters, netw
         channel_segs,
         logger,
     )
+        run_time = elapsed_time(start)
+    logger.info( f"Curvature metrics. Run-time: {run_time}" ) 

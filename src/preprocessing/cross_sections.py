@@ -318,6 +318,8 @@ def generate(Config, Paths, logger):
 
     """
     if Config.reuse_xn['reuse_xn_flag'] == False:
+        
+        start = perf_counter()
         # Generate interpolated coordinates along simplified stream network
         coords = get_stream_coords_from_features(
             Paths.network_poly,
@@ -328,7 +330,11 @@ def generate(Config, Paths, logger):
             Paths.xn_coordinates
         )
     
+        run_time = elapsed_time(start)
+        logger.info( f"Generating coordinates. Run-time: {run_time}" ) 
+
         # Generate channel cross sections
+        start = perf_counter()
         write_xns_shp(
             coords, 
             Config.spatial_ref['epsg'], 
@@ -337,8 +343,11 @@ def generate(Config, Paths, logger):
             Config.xn_lengths["channel"],
             Config.xn_lengths['xn_slope_vertical_cutoff'],
         )
-    
+        run_time = elapsed_time(start)
+        logger.info( f"Generating channel cross-sections. Run-time: {run_time}" ) 
+
         # Generate floodplain cross sections
+        start = perf_counter()
         write_xns_shp(
             coords, 
             Config.spatial_ref['epsg'], 
@@ -347,5 +356,8 @@ def generate(Config, Paths, logger):
             Config.xn_lengths["floodplain"],
             Config.xn_lengths['xn_slope_vertical_cutoff'],
         )
+        run_time = elapsed_time(start)
+        logger.info( f"Generating floodplain cross-sections. Run-time: {run_time}" ) 
+
     else:
         logger.info(f"Skipped generating channel and floodplain cross-sections, reusing cross-sections from {Config.reuse_xn['reuse_xn_data']} version {Config.reuse_xn['reuse_xn_version']}. ")

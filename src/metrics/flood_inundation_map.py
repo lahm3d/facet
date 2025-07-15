@@ -27,6 +27,8 @@ def delineate(
     Returns:
     """
     if not flood_extent_layer.is_file():
+        start = perf_counter()
+        
         # Open the HAND layer:
         with rasterio.open(hand) as ds_hand:
 
@@ -126,4 +128,7 @@ def delineate(
         df_h = pd.DataFrame({reach_id: lst_linkno, "prov": lst_prov, "h": lst_h, "da": lst_da})
         df_h.to_csv(flood_height_thresholds)
 
+        run_time = elapsed_time(start)
+        logger.info( f"Active flood extent delineated. Run-time: {run_time}" ) 
+        
         return
