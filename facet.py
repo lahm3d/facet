@@ -21,19 +21,14 @@ import argparse
 import time
 from pathlib import Path
 
-from src.utils import parse_toml, utils
-from src.utils.batch import generate_processing_batch
-from src.preprocessing import preprocess, cross_sections, network_smoothing
 from src.metrics import channel_cross_section_metrics as channel_metrics
 from src.metrics import channel_curvature_metrics as curvature_metrics
 from src.metrics import flood_inundation_map as fim
 from src.metrics import floodplain_metrics
-
 from src.postprocessing import spatial_qc as qc
-
-
-# Debug WBT compile issue only on WSL Ubuntu 20.0
-# whitebox.download_wbt(linux_musl=True, reset=True)
+from src.preprocessing import cross_sections, network_smoothing, preprocess
+from src.utils import parse_toml, utils
+from src.utils.batch import generate_processing_batch
 
 if __name__ == "__main__":
     

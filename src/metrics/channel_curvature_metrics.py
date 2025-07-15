@@ -1,10 +1,14 @@
-from osgeo import gdal
-import rasterio
-import numpy as np
+from time import perf_counter
+
 import fiona
-from shapely.geometry import LineString, mapping
+import numpy as np
 import pandas as pd
+import rasterio
+from osgeo import gdal
 from scipy import signal
+from shapely.geometry import LineString, mapping
+
+from src.utils.utils import elapsed_time
 
 
 def gauss_kern(sigma):

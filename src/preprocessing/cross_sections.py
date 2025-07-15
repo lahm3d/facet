@@ -1,12 +1,14 @@
 import sys
 from math import isinf, sqrt
-from timeit import default_timer as timer
+from time import perf_counter
 
 import fiona
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from shapely.geometry import LineString
+
+from src.utils.utils import elapsed_time
 
 
 def get_stream_coords_from_features(network, xn_gap, min_stream_length, reach_id, order_id, csv_output):

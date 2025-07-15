@@ -1,9 +1,14 @@
-from osgeo import gdal
-import rasterio
-import rasterio.mask
+from time import perf_counter
+
 import fiona
 import numpy as np
 import pandas as pd
+import rasterio
+import rasterio.mask
+from osgeo import gdal
+
+from src.utils.utils import elapsed_time
+
 
 def delineate(
     hand, sub_watersheds_poly, reach_id, flood_extent_layer, flood_height_thresholds, min_da, max_da, logger

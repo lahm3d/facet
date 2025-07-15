@@ -1,14 +1,18 @@
-from osgeo import gdal
-import rasterio
-import rasterio.mask
+from time import perf_counter
+
 import geopandas as gpd
-from shapely.geometry import mapping, LineString, Point
 import numpy as np
 import pandas as pd
+import rasterio
+import rasterio.mask
+from osgeo import gdal
 from scipy.ndimage import label
+from shapely.geometry import LineString, Point, mapping
 
 from src.preprocessing.cross_sections import build_xns
 from src.utils import utils
+from src.utils.utils import elapsed_time
+
 
 def fp_metrics_chsegs(flood_extent_layer, ch_width_id, channel_segs, xn_type, logger):
     """

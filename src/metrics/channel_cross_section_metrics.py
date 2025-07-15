@@ -1,14 +1,14 @@
-from math import ceil, atan
+from math import atan, ceil
+from time import perf_counter
 
-import numpy as np
-from osgeo import gdal
-import rasterio
 import fiona
-from fiona.crs import CRS
-import pandas as pd
 import geopandas as gpd
+import numpy as np
+import pandas as pd
+import rasterio
+from fiona.crs import CRS
 
-# from src.utils import utils
+from src.utils.utils import elapsed_time
 
 
 def find_bank_angles(tpl_bfpts, lst_total_slices, xn_len, xn_elev_n, parm_ivert, cell_size, logger):

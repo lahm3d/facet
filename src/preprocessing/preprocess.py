@@ -1,19 +1,24 @@
 
 # from whitebox_tools import WhiteboxTools
-import whitebox
-import geopandas as gpd
-import pandas as pd
+import subprocess
+import time
+from time import perf_counter
+
 import fiona
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+import rasterio
+import rasterstats
+import whitebox
 from osgeo import gdal
 from osgeo_utils.gdal_polygonize import gdal_polygonize
 from pyproj.exceptions import ProjError
-import rasterio
-import rasterstats
 from shapely.geometry import Point
-import subprocess
-import numpy as np
+
 from src.utils import utils
-import time
+from src.utils.utils import elapsed_time
+
 
 def clip_flowlines(flowlines, mask, output, logger):
     """

@@ -1,11 +1,10 @@
 import logging
-from pathlib import Path
 import subprocess
-from osgeo import gdal
-import rasterio
+from pathlib import Path
 from time import perf_counter
+
 import geopandas as gpd
-import fsspec
+import rasterio
 
 
 def elapsed_time(start):
