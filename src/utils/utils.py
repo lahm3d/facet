@@ -3,9 +3,24 @@ from pathlib import Path
 import subprocess
 from osgeo import gdal
 import rasterio
+from time import perf_counter
 import geopandas as gpd
 import fsspec
 
+
+def elapsed_time(start):
+    elapsed = perf_counter() - start  # elapsed time in seconds (float)
+
+    hours = elapsed / 3600
+    minutes = elapsed / 60
+    seconds = elapsed
+
+    if hours >= 1:
+        return f'{hours:.2f} hrs'
+    elif minutes >= 1:
+        return f'{minutes:.2f} mins'
+    else:
+        return f'{seconds:.1f} seconds'
 
 def create_folder(Paths):
 
