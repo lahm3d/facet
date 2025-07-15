@@ -55,7 +55,13 @@ def vector_to_geodataframe(file):
         return gpd.read_file(file)
 
 
-def initialize_logger(log_file: str) -> logging.getLogger():
+class NoWarningsFilter(logging.Filter):
+    def filter(self, record):
+        # Return False to block WARNING messages, True to allow others
+        return record.levelno != logging.WARNING
+
+
+def initialize_logger(log_file: Path) -> logging.Logger:
     """
     Initialize logger values and get logger object
     Args:
@@ -64,28 +70,34 @@ def initialize_logger(log_file: str) -> logging.getLogger():
     Returns: Logger instance
     """
 
-    clear_out_logger()
+    logger = logging.getLogger(__name__)
 
-    if log_file.exists():
-        log_file.unlink()
+    # Clear existing handlers from this specific logger to prevent duplicates
+    if logger.hasHandlers():
+        logger.handlers.clear()
 
-    logger = logging.getLogger("logger_loader")
-    logging.basicConfig(filename=log_file, filemode="a")
-    logger.setLevel(logging.INFO)
+    # log formatting
     formatter = logging.Formatter(
-        "%(asctime)s %(levelname)s [%(lineno)d] - %(message)s", "%m/%d/%Y %I:%M:%S %p"
+        "%(asctime)s | %(levelname)s | %(name)s() [%(lineno)d] --> %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
     )
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+
+    # Add FileHandler
+    file_handler = logging.FileHandler(log_file, mode="a")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # Stream handler logs INFO and ERROR but excludes WARNING via filter
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(formatter)
+    stream_handler.addFilter(NoWarningsFilter())
+    logger.addHandler(stream_handler)
+
+    logger.setLevel(logging.DEBUG)
+
     return logger
-
-
-def clear_out_logger():
-    """Remove all handlers associated with the root logger object"""
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
 
 
 def my_callback(value):

@@ -189,5 +189,3 @@ if __name__ == "__main__":
             )
 
         logger.info(f"Total run time: {round((time.time() - start) / 60, 2)} mins")
-        
-        utils.clear_out_logger()
